@@ -1,0 +1,50 @@
+#!/usr/bin/python
+
+import click
+import json
+import requests
+import sys
+
+BASEURL='https://pagure.io'
+
+
+
+@click.group()
+def pg():
+    # main command
+    pass
+
+@click.command()
+@click.argument('prid')
+def ppr(prid):
+    url = "%s/api/0/koji/pull-request/%s" % (BASEURL, prid)
+    r = requests.get(url)
+    pr = r.json()
+    if 'error_code' in pr:
+        print "%(error_code)s: %(error)s" % pr
+        sys.exit(1)
+    import pprint; pprint.pprint(pr)
+    print "PR#%(id)i: %(title)s" % pr
+    print
+    print "Merges #%(id)i" % pr
+    print "https://pagure.io/koji/pull-request/%(id)i" % pr
+    print
+    print "STATUS: %(status)s" % pr
+    if pr.get('repo_from'):
+        # should we use fullname field?
+        # or 
+        print "Fork: %s/%s" % (BASEURL, pr['repo_from']['fullname'])
+    elif pr.get('remote_git'):
+        print "Remote: %(remote_git)s" % pr
+    else:
+        print "Can't determine repo?"
+        sys.exit(1)
+    print "%(branch_from)s -> %(branch)s" % pr
+    if pr['status'] != 'Open':
+        print '...'
+
+pg.add_command(ppr)
+
+
+if __name__ == '__main__':
+    pg()

@@ -45,6 +45,23 @@ def ppr(prid):
 
 pg.add_command(ppr)
 
+@click.command()
+def prs():
+    url = "%s/api/0/koji/pull-requests" % BASEURL
+    r = requests.get(url)
+    data = r.json()
+    if 'error_code' in data:
+        print "%(error_code)s: %(error)s" % data
+        sys.exit(1)
+    count = data['total_requests']
+    prs = data['requests']
+    # TODO sort
+    for pr in prs:
+        print "PR#%(id)i: %(title)s [%(status)s]" % pr
+
+pg.add_command(prs)
+
+
 
 if __name__ == '__main__':
     pg()

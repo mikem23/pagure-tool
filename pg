@@ -2,6 +2,7 @@
 
 import click
 import json
+import pprint
 import requests
 import sys
 import time
@@ -87,6 +88,17 @@ def prs(order):
         print "PR#%(id)i: %(title)s [%(status)s]" % pr
 
 
+def project_path(project):
+    parts = []
+    if project.get('namespace'):
+        parts.append(project.get('namespace'))
+    if project.get('parent'):
+        parts.append('fork')
+        parts.append(project['user']['name'])
+    parts.append(project['name'])
+    return '/'.join(parts)
+
+
 @pg.command(name='list-projects')
 @click.argument('pattern')
 @click.option('--fork/--no-fork', default=False)
@@ -96,7 +108,52 @@ def list_projects(pattern, **opts):
     data = pcall('projects', opts)
     count = data['total_projects']
     for proj in data['projects']:
-        print "%(id)5i: %(name)s: %(description)s" % proj
+        proj['_path'] = project_path(proj)
+        print "%(_path)s: %(description)s" % proj
+
+
+@pg.group()
+def project():
+    pass
+
+@project.command('git-urls')
+@click.argument('name')
+def git_urls(name):
+    data = pcall("%s/git/urls" % name)
+    for url in data['urls']:  # not a list for some reason
+        print "%s: %s" % (url, data['urls'][url])
+
+
+@project.command('git-tags')
+@click.argument('name')
+def git_tags(name):
+    data = pcall("%s/git/tags" % name)
+    for tag in data['tags']:
+        print tag
+
+
+@project.command('git-branches')
+@click.argument('name')
+def git_branches(name):
+    data = pcall("%s/git/branches" % name)
+    for br in data['branches']:
+        print br
+
+
+@project.command()
+@click.argument('name')
+def watchers(name):
+    data = pcall("%s/watchers" % name)
+    for row in data['watchers']:  # dict, not list
+        wtype = data['watchers'][row]
+        print "%s: %s" % (row, wtype)
+
+
+@project.command("info")
+@click.argument('name')
+def projectinfo(name):
+    data = pcall(name)
+    pprint.pprint(data)
 
 
 if __name__ == '__main__':

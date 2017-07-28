@@ -10,21 +10,37 @@ import urllib
 BASEURL='https://pagure.io'
 
 
+def pcall(path, query=None, api=0, baseurl=BASEURL):
+    url = "%s/api/%s/%s" % (baseurl, api, path)
+    if isinstance(query, basestring):
+        url = "%s?%s" % (url, query)
+    elif query != None:
+        query = urllib.urlencode(query)
+        url = "%s?%s" % (url, query)
+    print "DEBUG: %s" % url
+    r = requests.get(url)
+    try:
+        data = r.json()
+    except Exception:
+        print "Server returned bad value"
+        print r
+        raise
+    if 'error_code' in data:
+        print "%(error_code)s: %(error)s" % data
+        sys.exit(1)
+    return data
+
 
 @click.group()
 def pg():
     # main command
     pass
 
+
 @pg.command()
 @click.argument('prid')
 def ppr(prid):
-    url = "%s/api/0/koji/pull-request/%s" % (BASEURL, prid)
-    r = requests.get(url)
-    pr = r.json()
-    if 'error_code' in pr:
-        print "%(error_code)s: %(error)s" % pr
-        sys.exit(1)
+    pr = pcall('/koji/pull-request/%s' % prid)
     import pprint; pprint.pprint(pr)
 
     for comment in pr['comments']:
@@ -59,18 +75,13 @@ def ppr(prid):
 @pg.command()
 @click.option('-o', '--order', default='updated_on')
 def prs(order):
-    url = "%s/api/0/koji/pull-requests" % BASEURL
-    r = requests.get(url)
-    data = r.json()
-    if 'error_code' in data:
-        print "%(error_code)s: %(error)s" % data
-        sys.exit(1)
+    data = pcall('koji/pull-requests')
     count = data['total_requests']
     prs = data['requests']
     if order:
         o_keys = order.split(',')
         def sortkey(pr):
-            return [pr[k] for k in o_keys]
+            return [pr.get(k) for k in o_keys]
         prs.sort(key=sortkey)
     for pr in prs:
         print "PR#%(id)i: %(title)s [%(status)s]" % pr
@@ -82,18 +93,10 @@ def prs(order):
 def list_projects(pattern, **opts):
     if pattern:
         opts['pattern'] = pattern
-    args = urllib.urlencode(opts)
-    url = "%s/api/0/projects" % BASEURL
-    url = "%s?%s" % (url, args)
-    print url
-    r = requests.get(url)
-    data = r.json()
-    if 'error_code' in data:
-        print "%(error_code)s: %(error)s" % data
-        sys.exit(1)
+    data = pcall('projects', opts)
     count = data['total_projects']
     for proj in data['projects']:
-        print "%(name)s [%(description)s]" % proj
+        print "%(id)5i: %(name)s: %(description)s" % proj
 
 
 if __name__ == '__main__':

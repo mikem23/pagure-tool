@@ -38,10 +38,16 @@ def pg():
     pass
 
 
-@pg.command()
+@pg.group()
+def pr():
+    pass
+
+
+@pr.command('info')
+@click.argument('project')
 @click.argument('prid')
-def ppr(prid):
-    pr = pcall('/koji/pull-request/%s' % prid)
+def prinfo(project, prid):
+    pr = pcall("%s/pull-request/%s" % (project, prid))
     import pprint; pprint.pprint(pr)
 
     for comment in pr['comments']:
@@ -73,10 +79,11 @@ def ppr(prid):
         print '...'
 
 
-@pg.command()
+@pr.command('list')
+@click.argument('project')
 @click.option('-o', '--order', default='updated_on')
-def prs(order):
-    data = pcall('koji/pull-requests')
+def pr_list(project, order):
+    data = pcall('%s/pull-requests' % project)
     count = data['total_requests']
     prs = data['requests']
     if order:

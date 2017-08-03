@@ -79,6 +79,31 @@ def prinfo(project, prid):
         print '...'
 
 
+@pr.command('checkout')
+@click.argument('project')
+@click.argument('prid')
+def pr_checkout(project, prid):
+    pr = pcall("%s/pull-request/%s" % (project, prid))
+    url, branch = get_pr_source(pr)
+    print "git fetch '%s' '%s'" % (url, branch)
+    print "git checkout -b pr%s FETCH_HEAD" % prid
+    # TODO: recycle branch if it exists
+    # TODO: --follow option
+
+
+def get_pr_source(prinfo):
+    """Returns a pair [url, branch]"""
+    branch = prinfo['branch_from']
+    if prinfo.get('repo_from'):
+        # apparently, for this we can use the fullname
+        url = "https://pagure.git/%(fullname)s.git" % prinfo['repo_from']
+    elif prinfo.get('remote_git'):
+        url = prinfo['remote_git']
+    else:
+        raise RuntimeError("Can't determine pr source")
+    return url, branch
+
+
 @pr.command('list')
 @click.argument('project')
 @click.option('-o', '--order', default='updated_on')

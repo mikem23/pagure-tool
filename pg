@@ -90,11 +90,11 @@ def prs(order):
 
 def project_path(project):
     parts = []
-    if project.get('namespace'):
-        parts.append(project.get('namespace'))
     if project.get('parent'):
         parts.append('fork')
         parts.append(project['user']['name'])
+    if project.get('namespace'):
+        parts.append(project.get('namespace'))
     parts.append(project['name'])
     return '/'.join(parts)
 
@@ -154,6 +154,45 @@ def watchers(name):
 def projectinfo(name):
     data = pcall(name)
     pprint.pprint(data)
+
+
+@pg.group()
+def issue():
+    pass
+
+
+@issue.command(name='list')
+@click.argument('project')
+@click.option('-o', '--order', default='updated_on')
+@click.option('--status', help="filter by status")
+@click.option('--tags', help="filter by tags")
+@click.option('--author', help="filter by author")
+@click.option('--assignee', help="filter by assignee")
+@click.option('--priority', help="filter by priority")
+def issuelist(project, order, **opts):
+    for k in list(opts):
+        if opts[k] is None:
+            del opts[k]
+    data = pcall("%s/issues" % project, opts)
+    issues = data['issues']
+    if order:
+        o_keys = order.split(',')
+        def sortkey(row):
+            return [row.get(k) for k in o_keys]
+        issues.sort(key=sortkey)
+    for row in data['issues']:
+        print "%(id)s: %(title)s" % row
+
+
+@issue.command("info")
+@click.argument('name')
+@click.argument('issueid')
+def issueinfo(name, issueid):
+    data = pcall("%s/issue/%s" % (name, issueid))
+    pprint.pprint(data)
+
+
+
 
 
 if __name__ == '__main__':

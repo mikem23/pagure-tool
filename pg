@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 import click
+import dateutil.parser
 import json
 import pprint
 import requests
@@ -16,7 +17,7 @@ def pcall(path, query=None, api=0, baseurl=BASEURL):
     if isinstance(query, basestring):
         url = "%s?%s" % (url, query)
     elif query != None:
-        query = urllib.urlencode(query)
+        query = urllib.urlencode(query, True)
         url = "%s?%s" % (url, query)
     print "DEBUG: %s" % url
     r = requests.get(url)
@@ -201,10 +202,17 @@ def issue():
 @click.option('--author', help="filter by author")
 @click.option('--assignee', help="filter by assignee")
 @click.option('--priority', help="filter by priority")
+@click.option('--since', help="filter by date")
+@click.option('-m', '--milestones', help="filter by milestone", multiple=True)
+@click.option('-n', '--no-stones', help="issues with no milestone", is_flag=True)
 def issuelist(project, order, **opts):
     for k in list(opts):
         if opts[k] is None:
             del opts[k]
+    if 'since' in opts:
+        val = opts['since']
+        dt = dateutil.parser.parse(val)
+        opts['since'] = int(time.mktime(dt.timetuple()))
     data = pcall("%s/issues" % project, opts)
     issues = data['issues']
     if order:

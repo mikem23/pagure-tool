@@ -96,7 +96,7 @@ def get_pr_source(prinfo):
     branch = prinfo['branch_from']
     if prinfo.get('repo_from'):
         # apparently, for this we can use the fullname
-        url = "https://pagure.git/%(fullname)s.git" % prinfo['repo_from']
+        url = "https://pagure.io/%(fullname)s.git" % prinfo['repo_from']
     elif prinfo.get('remote_git'):
         url = prinfo['remote_git']
     else:

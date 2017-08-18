@@ -194,6 +194,12 @@ def issue():
     pass
 
 
+def invert_opt(val):
+    if val is None:
+        return None
+    return not val
+
+
 @issue.command(name='list')
 @click.argument('project')
 @click.option('-o', '--order', default='updated_on')
@@ -204,8 +210,10 @@ def issue():
 @click.option('--priority', help="filter by priority")
 @click.option('--since', help="filter by date")
 @click.option('-m', '--milestones', help="filter by milestone", multiple=True)
-@click.option('-n', '--no-stones', help="issues with no milestone", is_flag=True)
+@click.option('--stones/--no-stones', help="issues with no milestone")
 def issuelist(project, order, **opts):
+    opts['no_stones'] = invert_opt(opts['stones'])
+    del opts['stones']
     for k in list(opts):
         if opts[k] is None:
             del opts[k]

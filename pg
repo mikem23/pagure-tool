@@ -2,21 +2,23 @@
 
 import click
 import dateutil.parser
-import json
+import os
 import pprint
+import pygit2
 import requests
 import sys
 import time
 import urllib
+import urlparse
 
-BASEURL='https://pagure.io'
+BASEURL = 'https://pagure.io'
 
 
 def pcall(path, query=None, api=0, baseurl=BASEURL):
     url = "%s/api/%s/%s" % (baseurl, api, path)
     if isinstance(query, basestring):
         url = "%s?%s" % (url, query)
-    elif query != None:
+    elif query is not None:
         query = urllib.urlencode(query, True)
         url = "%s?%s" % (url, query)
     print "DEBUG: %s" % url
@@ -44,12 +46,64 @@ def pr():
     pass
 
 
+def get_project(cwd=None):
+    if cwd is None:
+        cwd = os.getcwd()
+    try:
+        path = pygit2.discover_repository(cwd)
+    except KeyError:
+        return None
+    repo = pygit2.Repository(path)
+    remote = pick_pagure_remote(repo)
+    if remote is None:
+        return None
+    try:
+        info = parse_pagure_url(remote.url)
+    except ValueError:
+        return None
+    return info.project
+
+
+def pick_pagure_remote(repo):
+    choices = {}
+    for remote in repo.remotes:
+        url = remote.url
+        if 'pagure.io' in url:  # XXX should be smarter
+            choices[remote.name] = remote
+    if 'origin' in choices:
+        return choices['origin']
+    elif choices:
+        return choices.values()[0]
+    else:
+        return None
+
+
+def parse_pagure_url(url):
+    """Parse a pagure git url"""
+    info = urlparse.urlparse(url)
+    parts = info.path.split('/')
+    parts = [p for p in parts if p]
+    if parts[0] == 'forks':
+        info.parent = parts[1]
+        parts = parts[2:]
+    if len(parts) > 1:
+        info.namespace = parts[0]
+        parts = parts[1:]
+    if len(parts) > 1:
+        raise ValueError('Too many url path components: %s' % url)
+    project = parts[0]
+    if project.endswith('.git'):
+        project = project[:-4]
+    info.project = project
+    return info
+
+
 @pr.command('info')
 @click.argument('project')
 @click.argument('prid')
 def prinfo(project, prid):
     pr = pcall("%s/pull-request/%s" % (project, prid))
-    import pprint; pprint.pprint(pr)
+    pprint.pprint(pr)
 
     for comment in pr['comments']:
         cts = float(comment['date_created'])
@@ -68,7 +122,6 @@ def prinfo(project, prid):
     print "STATUS: %(status)s" % pr
     if pr.get('repo_from'):
         # should we use fullname field?
-        # or 
         print "Fork: %s/%s" % (BASEURL, pr['repo_from']['fullname'])
     elif pr.get('remote_git'):
         print "Remote: %(remote_git)s" % pr
@@ -110,7 +163,7 @@ def get_pr_source(prinfo):
 @click.option('-o', '--order', default='updated_on')
 def pr_list(project, order):
     data = pcall('%s/pull-requests' % project)
-    count = data['total_requests']
+    # count = data['total_requests']
     prs = data['requests']
     if order:
         o_keys = order.split(',')
@@ -139,7 +192,7 @@ def list_projects(pattern, **opts):
     if pattern:
         opts['pattern'] = pattern
     data = pcall('projects', opts)
-    count = data['total_projects']
+    # count = data['total_projects']
     for proj in data['projects']:
         proj['_path'] = project_path(proj)
         print "%(_path)s: %(description)s" % proj
@@ -148,6 +201,7 @@ def list_projects(pattern, **opts):
 @pg.group()
 def project():
     pass
+
 
 @project.command('git-urls')
 @click.argument('name')
@@ -238,9 +292,6 @@ def issuelist(project, order, **opts):
 def issueinfo(name, issueid):
     data = pcall("%s/issue/%s" % (name, issueid))
     pprint.pprint(data)
-
-
-
 
 
 if __name__ == '__main__':

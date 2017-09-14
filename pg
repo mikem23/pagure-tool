@@ -99,9 +99,13 @@ def parse_pagure_url(url):
 
 
 @pr.command('info')
-@click.argument('project')
 @click.argument('prid')
-def prinfo(project, prid):
+@click.option('-p', '--project')
+def prinfo(prid, project):
+    if project is None:
+        project = get_project()
+        if project is None:
+            raise Exception('Please specify a project')
     pr = pcall("%s/pull-request/%s" % (project, prid))
     pprint.pprint(pr)
 
@@ -134,9 +138,13 @@ def prinfo(project, prid):
 
 
 @pr.command('checkout')
-@click.argument('project')
 @click.argument('prid')
-def pr_checkout(project, prid):
+@click.option('-p', '--project')
+def pr_checkout(prid, project):
+    if project is None:
+        project = get_project()
+        if project is None:
+            raise Exception('Please project a project')
     pr = pcall("%s/pull-request/%s" % (project, prid))
     url, branch = get_pr_source(pr)
     print "git fetch '%s' '%s'" % (url, branch)
@@ -159,9 +167,13 @@ def get_pr_source(prinfo):
 
 
 @pr.command('list')
-@click.argument('project')
+@click.option('-p', '--project')
 @click.option('-o', '--order', default='updated_on')
 def pr_list(project, order):
+    if project is None:
+        project = get_project()
+        if project is None:
+            raise Exception('Please project a project')
     data = pcall('%s/pull-requests' % project)
     # count = data['total_requests']
     prs = data['requests']
@@ -204,42 +216,62 @@ def project():
 
 
 @project.command('git-urls')
-@click.argument('name')
-def git_urls(name):
-    data = pcall("%s/git/urls" % name)
+@click.option('-p', '--project')
+def git_urls(project):
+    if project is None:
+        project = get_project()
+        if project is None:
+            raise Exception('Please project a project')
+    data = pcall("%s/git/urls" % project)
     for url in data['urls']:  # not a list for some reason
         print "%s: %s" % (url, data['urls'][url])
 
 
 @project.command('git-tags')
-@click.argument('name')
-def git_tags(name):
-    data = pcall("%s/git/tags" % name)
+@click.option('-p', '--project')
+def git_tags(project):
+    if project is None:
+        project = get_project()
+        if project is None:
+            raise Exception('Please project a project')
+    data = pcall("%s/git/tags" % project)
     for tag in data['tags']:
         print tag
 
 
 @project.command('git-branches')
-@click.argument('name')
-def git_branches(name):
-    data = pcall("%s/git/branches" % name)
+@click.option('-p', '--project')
+def git_branches(project):
+    if project is None:
+        project = get_project()
+        if project is None:
+            raise Exception('Please project a project')
+    data = pcall("%s/git/branches" % project)
     for br in data['branches']:
         print br
 
 
 @project.command()
-@click.argument('name')
-def watchers(name):
-    data = pcall("%s/watchers" % name)
+@click.option('-p', '--project')
+def watchers(project):
+    if project is None:
+        project = get_project()
+        if project is None:
+            raise Exception('Please project a project')
+    data = pcall("%s/watchers" % project)
     for row in data['watchers']:  # dict, not list
         wtype = data['watchers'][row]
         print "%s: %s" % (row, wtype)
 
 
 @project.command("info")
-@click.argument('name')
-def projectinfo(name):
-    data = pcall(name)
+@click.option('-p', '--project')
+def projectinfo(project):
+    if project is None:
+        project = get_project()
+        if project is None:
+            raise Exception('Please project a project')
+    data = pcall(project)
     pprint.pprint(data)
 
 
@@ -255,7 +287,7 @@ def invert_opt(val):
 
 
 @issue.command(name='list')
-@click.argument('project')
+@click.option('-p', '--project')
 @click.option('-o', '--order', default='updated_on')
 @click.option('--status', help="filter by status")
 @click.option('--tags', help="filter by tags")
@@ -266,6 +298,10 @@ def invert_opt(val):
 @click.option('-m', '--milestones', help="filter by milestone", multiple=True)
 @click.option('--stones/--no-stones', help="issues with no milestone")
 def issuelist(project, order, **opts):
+    if project is None:
+        project = get_project()
+        if project is None:
+            raise Exception('Please project a project')
     opts['no_stones'] = invert_opt(opts['stones'])
     del opts['stones']
     for k in list(opts):
@@ -287,10 +323,14 @@ def issuelist(project, order, **opts):
 
 
 @issue.command("info")
-@click.argument('name')
 @click.argument('issueid')
-def issueinfo(name, issueid):
-    data = pcall("%s/issue/%s" % (name, issueid))
+@click.option('-p', '--project')
+def issueinfo(issueid, project):
+    if project is None:
+        project = get_project()
+        if project is None:
+            raise Exception('Please project a project')
+    data = pcall("%s/issue/%s" % (project, issueid))
     pprint.pprint(data)
 
 

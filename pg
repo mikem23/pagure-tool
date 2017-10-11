@@ -104,29 +104,23 @@ def parse_pagure_url(url):
 @pr.command('info')
 @click.argument('prid')
 @click.option('-p', '--project')
-def prinfo(prid, project):
+@click.option('--json/--no-json')
+def prinfo(prid, project, **opts):
     if project is None:
         project = get_project()
         if project is None:
             raise Exception('Please specify a project')
     pr = pcall("%s/pull-request/%s" % (project, prid))
-    pprint.pprint(pr)
-
-    for comment in pr['comments']:
-        cts = float(comment['date_created'])
-        comment['_username'] = comment['user']['name']
-        comment['_tstr'] = time.asctime(time.localtime(float(cts)))
-        print "Comment by %(_username)s on %(_tstr)s:" % comment
-        print
-        print comment['comment']
-        print
+    if opts['json']:
+        pprint.pprint(pr)
+        return
 
     print "PR#%(id)i: %(title)s" % pr
-    print
-    print "Merges #%(id)i" % pr
     print "https://pagure.io/koji/pull-request/%(id)i" % pr
-    print
-    print "STATUS: %(status)s" % pr
+    print "Status: %(status)s" % pr
+    print "User: %s" % pr['user']['name']
+    print "Created: %s" % time.asctime(time.localtime(float(pr['date_created'])))
+    print "Updated: %s" % time.asctime(time.localtime(float(pr['updated_on'])))
     if pr.get('repo_from'):
         # should we use fullname field?
         print "Fork: %s/%s" % (BASEURL, pr['repo_from']['fullname'])
@@ -138,6 +132,21 @@ def prinfo(prid, project):
     print "%(branch_from)s -> %(branch)s" % pr
     if pr['status'] != 'Open':
         print '...'
+
+    print
+    print "Description:"
+    print pr['initial_comment']
+
+    for comment in pr['comments']:
+        print
+        cts = float(comment['date_created'])
+        comment['_username'] = comment['user']['name']
+        comment['_tstr'] = time.asctime(time.localtime(float(cts)))
+        print "Comment by %(_username)s on %(_tstr)s:" % comment
+        print
+        print comment['comment']
+        print
+
 
 
 @pr.command('checkout')

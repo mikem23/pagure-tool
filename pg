@@ -175,6 +175,58 @@ def pr_checkout(prid, **opts):
     # TODO: --follow option ?
 
 
+@pr.command('merge')
+def pr_checkout(**opts):
+    project = get_project()
+    if project is None:
+        raise Exception('Must be run from pagure checkout')
+
+    cwd = os.getcwd()
+    path = pygit2.discover_repository(cwd)
+    repo = pygit2.Repository(path)
+
+    # determine pr from branch
+    if not repo.head.name.startswith('refs/heads/'):
+        raise Exception("HEAD is not a branch")
+    branch = repo.head.name[11:]
+    if not branch.startswith('pagure/pr/'):
+        raise Exception("Not a pr branch: %s" % branch)
+    prid = branch[10:]
+    print "PR branch for %s" % prid
+
+    pr = pcall("%s/pull-request/%s" % (project, prid))
+    url, remote_branch = get_pr_source(pr)
+
+    # fetch for comparison
+    cmd = ['git', 'fetch', url, remote_branch]
+    subprocess.check_call(cmd)
+
+    # pygit2 can't give me FETCH_HEAD
+    cmd = ['git', 'rev-parse', 'FETCH_HEAD']
+    remote_ref = subprocess.check_output(cmd).strip()
+    remote_obj = repo.get(remote_ref)
+
+    if remote_obj.oid != repo.head.target:
+        print("Warning: current branch does match remote")
+        # TODO: show differences
+        # TODO: proceed if --force is given
+        raise Exception
+
+    # merge into master
+    cmd = ['git', 'checkout', 'master']  # TODO: allow merge to other branches
+    subprocess.check_call(cmd)
+
+    # TODO: this should probably be an option
+    cmd = ['git', 'pull', '--ff-only']
+    subprocess.check_call(cmd)
+
+    # TODO - generate better merge message
+    msg = "Merge PR#%s" % prid
+
+    cmd = ['git', 'merge', '--edit', '-m', msg, '--no-ff', branch]
+    print cmd
+
+
 def get_pr_source(prinfo):
     """Returns a pair [url, branch]"""
     branch = prinfo['branch_from']

@@ -176,7 +176,8 @@ def pr_checkout(prid, **opts):
 
 
 @pr.command('merge')
-def pr_checkout(**opts):
+@click.option('--force/--no-force', '-f/')
+def pr_merge(**opts):
     project = get_project()
     if project is None:
         raise Exception('Must be run from pagure checkout')
@@ -209,8 +210,8 @@ def pr_checkout(**opts):
     if remote_obj.oid != repo.head.target:
         print("Warning: current branch does match remote")
         # TODO: show differences
-        # TODO: proceed if --force is given
-        raise Exception
+        if not opts['force']:
+            raise Exception
 
     # merge into master
     cmd = ['git', 'checkout', 'master']  # TODO: allow merge to other branches
@@ -220,11 +221,17 @@ def pr_checkout(**opts):
     cmd = ['git', 'pull', '--ff-only']
     subprocess.check_call(cmd)
 
-    # TODO - generate better merge message
-    msg = "Merge PR#%s" % prid
+    # generate standard commit message
+    pr = pcall("%s/pull-request/%s" % (project, prid))
+    msg = (
+            "PR#%(id)i: %(title)s\n"
+            "\n"
+            "Merges #%(id)i\n"
+            "https://pagure.io/koji/pull-request/%(id)i"
+            ) % pr
 
     cmd = ['git', 'merge', '--edit', '-m', msg, '--no-ff', branch]
-    print cmd
+    subprocess.check_call(cmd)
 
 
 def get_pr_source(prinfo):

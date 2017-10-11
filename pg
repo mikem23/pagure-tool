@@ -167,16 +167,26 @@ def pr_checkout(prid, **opts):
     cmd = ['git', 'fetch', url, remote_branch]
     subprocess.check_call(cmd)
     branch = "pagure/pr/%s" % prid
-    if branch in repo.listall_branches(pygit2.GIT_BRANCH_LOCAL):
+    local_brs = repo.listall_branches(pygit2.GIT_BRANCH_LOCAL)
+    if branch in local_brs:
         print "Reusing branch: %s" % branch
         cmd = ['git', 'update-ref',
                 '-m', 'updating branch %s' % branch,
                 'refs/heads/%s' % branch, 'FETCH_HEAD']
         subprocess.check_call(cmd)
     else:
-        cmd = ['git', 'branch', branch, 'FETCH_HEAD']
-        subprocess.check_call(cmd)
-        print "New branch: %s" % branch
+        obj = repo.get(pr['commit_stop'])
+        for br in local_brs:
+            bref = repo.lookup_branch(br)
+            if bref.target == obj.oid:
+                branch = br
+                print "Reusing local branch: %s" % branch
+                break
+        else:
+            # make our own
+            cmd = ['git', 'branch', branch, 'FETCH_HEAD']
+            subprocess.check_call(cmd)
+            print "New branch: %s" % branch
 
     # not sure I trust pygit2's checkout function
     cmd = ['git', 'checkout', branch]

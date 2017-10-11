@@ -177,6 +177,7 @@ def pr_checkout(prid, **opts):
 
 @pr.command('merge')
 @click.option('--force/--no-force', '-f/')
+@click.option('--rebase/--no-rebase', '-r/')
 def pr_merge(**opts):
     project = get_project()
     if project is None:
@@ -210,8 +211,14 @@ def pr_merge(**opts):
     if remote_obj.oid != repo.head.target:
         print("Warning: current branch does match remote")
         # TODO: show differences
-        if not opts['force']:
+        if not opts['force'] and not opts['rebase']:
             raise Exception
+
+    if opts['rebase']:
+        cmd = ['git', 'fetch', 'origin']
+        subprocess.check_call(cmd)
+        cmd = ['git', 'rebase', 'origin']
+        subprocess.check_call(cmd)
 
     # merge into master
     cmd = ['git', 'checkout', 'master']  # TODO: allow merge to other branches

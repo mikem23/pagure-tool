@@ -3,11 +3,14 @@
 import click
 import dateutil.parser
 import os
+import pdb
 import pprint
 import pygit2
 import requests
+import subprocess
 import sys
 import time
+import traceback
 import urllib
 import urlparse
 
@@ -139,18 +142,37 @@ def prinfo(prid, project):
 
 @pr.command('checkout')
 @click.argument('prid')
-@click.option('-p', '--project')
-def pr_checkout(prid, project):
+def pr_checkout(prid, **opts):
+    project = get_project()
     if project is None:
-        project = get_project()
-        if project is None:
-            raise Exception('Please project a project')
+        raise Exception('Must be run from pagure checkout')
     pr = pcall("%s/pull-request/%s" % (project, prid))
-    url, branch = get_pr_source(pr)
-    print "git fetch '%s' '%s'" % (url, branch)
-    print "git checkout -b pr%s FETCH_HEAD" % prid
-    # TODO: recycle branch if it exists
-    # TODO: --follow option
+    url, remote_branch = get_pr_source(pr)
+
+    cwd = os.getcwd()
+    path = pygit2.discover_repository(cwd)
+    repo = pygit2.Repository(path)
+
+    # current version of pygit2 doesn't seem to be able to fetch from
+    # arbitrary urls
+    cmd = ['git', 'fetch', url, remote_branch]
+    subprocess.check_call(cmd)
+    branch = "pagure/pr/%s" % prid
+    if branch in repo.listall_branches(pygit2.GIT_BRANCH_LOCAL):
+        print "Reusing branch: %s" % branch
+        cmd = ['git', 'update-ref',
+                '-m', 'updating branch %s' % branch,
+                'refs/heads/%s' % branch, 'FETCH_HEAD']
+        subprocess.check_call(cmd)
+    else:
+        cmd = ['git', 'branch', branch, 'FETCH_HEAD']
+        subprocess.check_call(cmd)
+        print "New branch: %s" % branch
+
+    # not sure I trust pygit2's checkout function
+    cmd = ['git', 'checkout', branch]
+    subprocess.check_call(cmd)
+    # TODO: --follow option ?
 
 
 def get_pr_source(prinfo):
@@ -335,4 +357,9 @@ def issueinfo(issueid, project):
 
 
 if __name__ == '__main__':
-    pg()
+    try:
+        pg()
+    except Exception:
+        etype, e, tb = sys.exc_info()
+        traceback.print_exc()
+        pdb.post_mortem(tb)

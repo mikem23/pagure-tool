@@ -265,19 +265,25 @@ def pr_merge(**opts):
             "# Please verify their accuracy before committing\n"
             )
     fixes, relates = get_pr_issues(project, pr)
+
     def issuetext(info):
-        return (
-                "%(_verb)s: #%(id)s\n"
-                "%(_url)s\n"
-                "%(title)s\n"
-                "# Status: %(status)s\n"
-                ) % issue
+        lines = ["%(_verb)s: #%(id)s"]
+        if info['_verb'] != 'Fixes':
+            lines.append("# Fixes: #%(id)s")
+        lines.extend([
+                "%(_url)s",
+                "%(title)s",
+                "# Status: %(status)s",
+                "",
+                ])
+        return '\n'.join(lines) % issue
+
     for issue in fixes:
         issue['_url'] = issue_url(pr['project'], issue)
         issue['_verb'] = 'Fixes'
         parts.append(issuetext(issue))
     for issue in relates:
-        issue['_url'] = issue_url(pr_project, issue)
+        issue['_url'] = issue_url(pr['project'], issue)
         issue['_verb'] = 'Relates'
         parts.append(issuetext(issue))
     msg = '\n'.join(parts)

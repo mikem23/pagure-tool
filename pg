@@ -6,6 +6,7 @@ import os
 import pdb
 import pprint
 import pygit2
+import re
 import requests
 import subprocess
 import sys
@@ -33,8 +34,8 @@ def pcall(path, query=None, api=0, baseurl=BASEURL):
         print r
         raise
     if 'error_code' in data:
-        print "%(error_code)s: %(error)s" % data
-        sys.exit(1)
+        s = "%(error_code)s: %(error)s" % data
+        raise Exception(s)
     return data
 
 
@@ -254,11 +255,40 @@ def pr_merge(**opts):
             "PR#%(id)i: %(title)s\n"
             "\n"
             "Merges #%(id)i\n"
-            "https://pagure.io/koji/pull-request/%(id)i"
+            "https://pagure.io/koji/pull-request/%(id)i\n"
             ) % pr
+    parts = [msg]
+
+    # issues
+    parts.append(
+            "# The issues below were derived from the pull request\n"
+            "# Please verify their accuracy before committing\n"
+            )
+    fixes, relates = get_pr_issues(project, pr)
+    def issuetext(info):
+        return (
+                "%(_verb)s: #%(id)s\n"
+                "%(_url)s\n"
+                "%(title)s\n"
+                "# Status: %(status)s\n"
+                ) % issue
+    for issue in fixes:
+        issue['_url'] = issue_url(pr['project'], issue)
+        issue['_verb'] = 'Fixes'
+        parts.append(issuetext(issue))
+    for issue in relates:
+        issue['_url'] = issue_url(pr_project, issue)
+        issue['_verb'] = 'Relates'
+        parts.append(issuetext(issue))
+    msg = '\n'.join(parts)
 
     cmd = ['git', 'merge', '--edit', '-m', msg, '--no-ff', branch]
     subprocess.check_call(cmd)
+
+
+def issue_url(project, pr):
+    ppath = project_path(project)
+    return "%s/%s/issue/%s" % (BASEURL, ppath, pr['id'])
 
 
 def get_pr_from_branch(project, repo, branch):
@@ -302,6 +332,85 @@ def get_pr_source(prinfo):
     else:
         raise RuntimeError("Can't determine pr source")
     return url, branch
+
+
+ISSUE_BRANCH_RE = re.compile(r'issue[_-]?(\d+)', re.I)
+
+ISSUE_FIX_RE = re.compile(
+            r'''(?:.*\s+)?                      # junk at beginning
+                (?:fixe?[sd]?|close?[sd]?)      # verb
+                :?\s*                           # optional separation
+                (?:https?://.*/(\w+)/issue/)?   # optional url
+                (\d+)                           # issue number
+            ''', re.X|re.I)
+
+ISSUE_RELATE_RE = re.compile(
+            r'''(?:.*\s+)?                      # junk at beginning
+                (?:relate[sd]?)                 # verb
+                :?\s*                           # optional separation
+                (?:https?://.*/(\w+)/issue/)?   # optional url
+                (\d+)                           # issue number
+            ''', re.X|re.I)
+
+
+def get_pr_issues(project, prinfo):
+    """Return issues that seem to be related to the pr"""
+    fixes = []
+    relates = []
+
+    # check branch
+    branch = prinfo['branch_from']
+    m = ISSUE_BRANCH_RE.match(branch)
+    if m:
+        fixes.append(m.group(1))
+
+    comments = ([prinfo['initial_comment'] or '']
+                + [c['comment'] for c in prinfo['comments']])
+    for text in comments:
+        for line in text.splitlines():
+            m = ISSUE_FIX_RE.match(line)
+            if m:
+                if m.group(1) == prinfo['project']['name']:
+                    fixes.append(m.group(2))
+                else:
+                    # XXX
+                    print "cross project issue: %s" % line
+            m = ISSUE_RELATE_RE.match(line)
+            if m:
+                if m.group(1) == prinfo['project']['name']:
+                    relates.append(m.group(2))
+                else:
+                    # XXX
+                    print "cross project issue: %s" % line
+
+    fixes = set(fixes)
+    relates = set(relates) - fixes
+
+    issues = {}
+    for issueid in fixes.union(relates):
+        try:
+            data = pcall("%s/issue/%s" % (project, issueid))
+        except Exception:
+            data = None
+        issues[issueid] = data
+
+    fixes = [issues[n] for n in fixes if issues[n]]
+    relates = [issues[n] for n in relates if issues[n]]
+    return fixes, relates
+
+
+# XXX test command
+@pr.command('issues')
+@click.argument('prid')
+@click.option('-p', '--project')
+def prinfo(prid, project, **opts):
+    if project is None:
+        project = get_project()
+        if project is None:
+            raise Exception('Please specify a project')
+    pr = pcall("%s/pull-request/%s" % (project, prid))
+    issues = get_pr_issues(project, pr)
+    pprint.pprint(issues)
 
 
 @pr.command('list')

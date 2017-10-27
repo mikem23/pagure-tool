@@ -260,11 +260,14 @@ def pr_merge(**opts):
     parts = [msg]
 
     # issues
-    parts.append(
-            "# The issues below were derived from the pull request\n"
-            "# Please verify their accuracy before committing\n"
-            )
     fixes, relates = get_pr_issues(project, pr)
+    if fixes or relates:
+        parts.append(
+                "# The issues below were derived from the pull request\n"
+                "# Please verify their accuracy before committing\n"
+                )
+    else:
+        parts.append('# (no referenced issues found)\n')
 
     def issuetext(info):
         lines = ["%(_verb)s: #%(id)s"]
@@ -324,6 +327,7 @@ def get_pr_from_branch(project, repo, branch):
     elif len(matches) > 1:
         raise Exception("Branch matches multiple PRs")
     # else
+    pr = matches[0]
     return pr['id']
 
 
@@ -347,7 +351,7 @@ ISSUE_FIX_RE = re.compile(
                 (?:fixe?[sd]?|close?[sd]?)      # verb
                 :?\s*                           # optional separation
                 (?:https?://.*/(\w+)/issue/)?   # optional url
-                (\d+)                           # issue number
+                [#]?(\d+)                       # issue number
             ''', re.X|re.I)
 
 ISSUE_RELATE_RE = re.compile(
@@ -355,7 +359,7 @@ ISSUE_RELATE_RE = re.compile(
                 (?:relate[sd]?)                 # verb
                 :?\s*                           # optional separation
                 (?:https?://.*/(\w+)/issue/)?   # optional url
-                (\d+)                           # issue number
+                [#]?(\d+)                       # issue number
             ''', re.X|re.I)
 
 
@@ -376,18 +380,18 @@ def get_pr_issues(project, prinfo):
         for line in text.splitlines():
             m = ISSUE_FIX_RE.match(line)
             if m:
-                if m.group(1) == prinfo['project']['name']:
-                    fixes.append(m.group(2))
-                else:
+                if m.group(1) and m.group(1) != prinfo['project']['name']:
                     # XXX
                     print "cross project issue: %s" % line
+                else:
+                    fixes.append(m.group(2))
             m = ISSUE_RELATE_RE.match(line)
             if m:
-                if m.group(1) == prinfo['project']['name']:
-                    relates.append(m.group(2))
-                else:
+                if m.group(1) and m.group(1) != prinfo['project']['name']:
                     # XXX
                     print "cross project issue: %s" % line
+                else:
+                    relates.append(m.group(2))
 
     fixes = set(fixes)
     relates = set(relates) - fixes

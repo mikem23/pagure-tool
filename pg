@@ -172,7 +172,7 @@ def pr_checkout(prid, **opts):
     if branch in local_brs:
         print "Reusing branch: %s" % branch
         cmd = ['git', 'update-ref',
-                '-m', 'updating branch %s' % branch,
+                '-m', 'pg: updating branch %s' % branch,
                 'refs/heads/%s' % branch, 'FETCH_HEAD']
         subprocess.check_call(cmd)
     else:

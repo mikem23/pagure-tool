@@ -657,6 +657,55 @@ def issuelist(project, order, **opts):
         print "%(id)s: %(title)s" % row
 
 
+@issue.command('recent')
+@click.option('-p', '--project')
+@click.option('-s', '--since', default="-7")
+def issue_recent(project, since):
+    if project is None:
+        project = get_project()
+        if project is None:
+            raise Exception('Please project a project')
+    # not sure if I trust the api's since filter
+    data = pcall("%s/issues" % project)
+    issues = data['issues']
+    for issue in issues:
+        ts1 = int(issue['date_created'] or 0)
+        ts2 = int(issue['last_updated'] or 0)
+        ts = max(ts1, ts2)
+        for comment in issue.get('comments', []):
+            cts1 = int(comment['date_created'] or 0)
+            cts2 = int(comment['edited_on'] or 0)
+            ts = max(ts, cts1, cts2)
+        issue['utime'] = ts
+
+    cutoff = get_cutoff_ts(since)
+    issues.sort(key=lambda p: p['utime'])
+    for issue in issues:
+        if issue['utime'] < cutoff:
+            continue
+        print "-------------------"
+        print "Issue#%(id)i: %(title)s [%(status)s]" % issue
+        print "https://pagure.io/koji/issue/%(id)i" % issue
+        print "User: %s" % issue['user']['name']
+        if int(issue['date_created']) > cutoff:
+            print "Created: %s" % time.asctime(time.localtime(float(issue['date_created'])))
+            print
+            print issue['content']
+        elif int(issue['last_updated']) > cutoff:
+            print "Updated: %s" % time.asctime(time.localtime(float(issue['last_updated'])))
+        for comment in issue['comments']:
+            cts = float(comment['date_created'])
+            if cts < cutoff:
+                continue
+            comment['_username'] = comment['user']['name']
+            comment['_tstr'] = time.asctime(time.localtime(float(cts)))
+            print "Comment by %(_username)s on %(_tstr)s:" % comment
+            print
+            print
+            print comment['comment']
+            print
+
+
 @issue.command("info")
 @click.argument('issueid')
 @click.option('-p', '--project')

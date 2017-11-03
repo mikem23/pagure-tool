@@ -235,14 +235,17 @@ def pr_merge(**opts):
         if not opts['force']:
             raise Exception('Use --force to merge a modified PR branch')
 
+    # get target branch
+    target_branch = pr['branch']
+
     if opts['rebase']:
         cmd = ['git', 'fetch', 'origin']
         subprocess.check_call(cmd)
-        cmd = ['git', 'rebase', 'origin']
+        cmd = ['git', 'rebase', 'origin/%s' % target_branch]
         subprocess.check_call(cmd)
 
-    # merge into master
-    cmd = ['git', 'checkout', 'master']  # TODO: allow merge to other branches
+    # checkout our target branch
+    cmd = ['git', 'checkout', target_branch]
     subprocess.check_call(cmd)
 
     # TODO: this should probably be an option
@@ -291,6 +294,7 @@ def pr_merge(**opts):
         parts.append(issuetext(issue))
     msg = '\n'.join(parts)
 
+    # finally, do the merge
     cmd = ['git', 'merge', '--edit', '-m', msg, '--no-ff', branch]
     subprocess.check_call(cmd)
 

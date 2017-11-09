@@ -275,7 +275,7 @@ def pr_merge(**opts):
     def issuetext(info):
         lines = ["%(_verb)s: #%(id)s"]
         if info['_verb'] != 'Fixes':
-            lines.append("# Fixes: #%(id)s")
+            lines.append("# Fixes #%(id)s")
         lines.extend([
                 "%(_url)s",
                 "%(title)s",

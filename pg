@@ -458,7 +458,9 @@ def pr_list(project, order):
 @pr.command('recent')
 @click.option('-p', '--project')
 @click.option('-s', '--since', default="-7")
-def pr_recent(project, since):
+@click.option('-c', '--closer', metavar='USER',
+                help='ignore if final comment by user')
+def pr_recent(project, since, closer):
     if project is None:
         project = get_project()
         if project is None:
@@ -478,6 +480,11 @@ def pr_recent(project, since):
     for pr in prs:
         if pr['utime'] < cutoff:
             continue
+        if closer:
+            # check final comment
+            comments = pr.get('comments', [])
+            if comments and comments[-1]['user']['name'] == closer:
+                continue
         print "-------------------"
         print "PR#%(id)i: %(title)s [%(status)s]" % pr
         print "https://pagure.io/koji/pull-request/%(id)i" % pr

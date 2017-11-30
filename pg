@@ -434,7 +434,7 @@ def pr_list(project, order):
     if project is None:
         project = get_project()
         if project is None:
-            raise Exception('Please project a project')
+            raise Exception('Please provide a project')
     data = pcall('%s/pull-requests' % project)
     # count = data['total_requests']
     prs = data['requests']
@@ -464,7 +464,7 @@ def pr_recent(project, since, closer):
     if project is None:
         project = get_project()
         if project is None:
-            raise Exception('Please project a project')
+            raise Exception('Please provide a project')
     data = pcall('%s/pull-requests' % project)
     prs = data['requests']
     for pr in prs:
@@ -567,7 +567,7 @@ def git_urls(project):
     if project is None:
         project = get_project()
         if project is None:
-            raise Exception('Please project a project')
+            raise Exception('Please provide a project')
     data = pcall("%s/git/urls" % project)
     for url in data['urls']:  # not a list for some reason
         print "%s: %s" % (url, data['urls'][url])
@@ -579,7 +579,7 @@ def git_tags(project):
     if project is None:
         project = get_project()
         if project is None:
-            raise Exception('Please project a project')
+            raise Exception('Please provide a project')
     data = pcall("%s/git/tags" % project)
     for tag in data['tags']:
         print tag
@@ -591,7 +591,7 @@ def git_branches(project):
     if project is None:
         project = get_project()
         if project is None:
-            raise Exception('Please project a project')
+            raise Exception('Please provide a project')
     data = pcall("%s/git/branches" % project)
     for br in data['branches']:
         print br
@@ -603,7 +603,7 @@ def watchers(project):
     if project is None:
         project = get_project()
         if project is None:
-            raise Exception('Please project a project')
+            raise Exception('Please provide a project')
     data = pcall("%s/watchers" % project)
     for row in data['watchers']:  # dict, not list
         wtype = data['watchers'][row]
@@ -616,7 +616,7 @@ def projectinfo(project):
     if project is None:
         project = get_project()
         if project is None:
-            raise Exception('Please project a project')
+            raise Exception('Please provide a project')
     data = pcall(project)
     pprint.pprint(data)
 
@@ -647,7 +647,7 @@ def issuelist(project, order, **opts):
     if project is None:
         project = get_project()
         if project is None:
-            raise Exception('Please project a project')
+            raise Exception('Please provide a project')
     opts['no_stones'] = invert_opt(opts['stones'])
     del opts['stones']
     for k in list(opts):
@@ -675,7 +675,7 @@ def issue_recent(project, since):
     if project is None:
         project = get_project()
         if project is None:
-            raise Exception('Please project a project')
+            raise Exception('Please provide a project')
     # not sure if I trust the api's since filter
     data = pcall("%s/issues" % project)
     issues = data['issues']
@@ -724,7 +724,7 @@ def issueinfo(issueid, project):
     if project is None:
         project = get_project()
         if project is None:
-            raise Exception('Please project a project')
+            raise Exception('Please provide a project')
     data = pcall("%s/issue/%s" % (project, issueid))
     pprint.pprint(data)
 

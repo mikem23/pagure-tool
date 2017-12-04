@@ -163,17 +163,24 @@ def pr_checkout(prid, **opts):
     path = pygit2.discover_repository(cwd)
     repo = pygit2.Repository(path)
 
+    branch = "pagure/pr/%s" % prid
+    fullref = 'refs/heads/%s' % branch
+    if repo.head.name == fullref:
+        print "Already on branch %s" % branch
+        # TODO: handle updating the branch
+        subprocess.call(['git', 'status'])
+        return
+
     # current version of pygit2 doesn't seem to be able to fetch from
     # arbitrary urls
     cmd = ['git', 'fetch', url, remote_branch]
     subprocess.check_call(cmd)
-    branch = "pagure/pr/%s" % prid
     local_brs = repo.listall_branches(pygit2.GIT_BRANCH_LOCAL)
     if branch in local_brs:
         print "Reusing branch: %s" % branch
         cmd = ['git', 'update-ref',
                 '-m', 'pg: updating branch %s' % branch,
-                'refs/heads/%s' % branch, 'FETCH_HEAD']
+                fullref, 'FETCH_HEAD']
         subprocess.check_call(cmd)
     else:
         obj = repo.get(pr['commit_stop'])

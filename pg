@@ -642,6 +642,7 @@ def invert_opt(val):
 @issue.command(name='list')
 @click.option('-p', '--project')
 @click.option('-o', '--order', default='updated_on')
+@click.option('-f', '--format', 'fmt', default='{id}: {title}')
 @click.option('--status', help="filter by status")
 @click.option('--tags', help="filter by tags")
 @click.option('--author', help="filter by author")
@@ -649,8 +650,9 @@ def invert_opt(val):
 @click.option('--priority', help="filter by priority")
 @click.option('--since', help="filter by date")
 @click.option('-m', '--milestones', help="filter by milestone", multiple=True)
-@click.option('--stones/--no-stones', help="issues with no milestone")
-def issuelist(project, order, **opts):
+@click.option('--stones/--no-stones', default=None,
+              help="issues with no milestone")
+def issuelist(project, order, fmt, **opts):
     if project is None:
         project = get_project()
         if project is None:
@@ -672,7 +674,7 @@ def issuelist(project, order, **opts):
             return [row.get(k) for k in o_keys]
         issues.sort(key=sortkey)
     for row in data['issues']:
-        print "%(id)s: %(title)s" % row
+        print(fmt.format(**row))
 
 
 @issue.command('recent')

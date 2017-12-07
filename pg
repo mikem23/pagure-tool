@@ -166,6 +166,8 @@ def pr_fetchall():
 @pr.command('checkout')
 @click.argument('prid')
 @click.option('--local/--no-local', default=True)
+@click.option('--reset/--no-reset', default=False,
+        help='reset branch to PR if it has deviated')
 def pr_checkout(prid, **opts):
     """Checkout the given pull request"""
 
@@ -238,13 +240,37 @@ def pr_checkout(prid, **opts):
         print "Fast-forwarding..."
         cmd = ['git', 'merge', '--ff-only', dst_ref]
         subprocess.check_call(cmd)
+        ref = repo.head
     elif contains(ref.get_object(), obj):
         # we're ahead
         print "Warning: local branch is ahead of PR: %s" % obj.oid
     else:
         print("WARNING: local branch has deviated from PR")
-        print("PR:    %s" % obj.oid)
-        print("Local: %s" % ref.target)
+        print("PR:    %s (%s)" % (obj.oid, dst_ref))
+        print("Local: %s (%s)" % (ref.target, branch))
+
+    if opts['reset'] and ref.target != obj.oid:
+        print("RESETTING branch to match PR")
+        print("Ref was: %s" % ref.target)
+        # avoiding use of reset command as it is a little risky
+
+        # check out the bare ref
+        # - if we stay on the branch, update-ref acts like a soft reset
+        # - the sanity checks of the checkout command work in our favor
+        cmd = ['git', 'checkout', dst_ref]
+        subprocess.check_call(cmd, stdout=open('/dev/null', 'w'))
+
+        # update the ref for our branch
+        cmd = ['git', 'update-ref',
+               '-m', 'pg: resetting branch %s for pr %s' % (branch, prid),
+               'refs/heads/%s' % branch, dst_ref]
+        subprocess.check_call(cmd)
+
+        # check out the branch again
+        # - this should be a non-op for the index and tree since the ref
+        #   is the same
+        cmd = ['git', 'checkout', branch]
+        subprocess.check_call(cmd)
 
 
 def contains(a, b):

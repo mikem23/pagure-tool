@@ -50,14 +50,18 @@ def pr():
     pass
 
 
-def get_project(cwd=None):
+def get_repo(cwd=None):
     if cwd is None:
         cwd = os.getcwd()
     try:
         path = pygit2.discover_repository(cwd)
     except KeyError:
         return None
-    repo = pygit2.Repository(path)
+    return pygit2.Repository(path)
+
+
+def get_project(cwd=None):
+    repo = get_repo(cwd)
     remote = pick_pagure_remote(repo)
     if remote is None:
         return None
@@ -149,57 +153,135 @@ def prinfo(prid, project, **opts):
         print
 
 
+@pr.command('fetchall')
+def pr_fetchall():
+    # fetch = +refs/pull/*/head:refs/remotes/origin/pull/*
+    repo = get_repo()
+    remote = pick_pagure_remote(repo)
+    name = remote.name
+    cmd = ['git', 'fetch', name, '+refs/pull/*/head:refs/pagure-pull/%s/*' % name]
+    subprocess.check_call(cmd)
+
 
 @pr.command('checkout')
 @click.argument('prid')
 def pr_checkout(prid, **opts):
-    project = get_project()
-    if project is None:
-        raise Exception('Must be run from pagure checkout')
+    """Checkout the given pull request"""
+
+    # figure out repo and project info
+    repo = get_repo()
+    remote = pick_pagure_remote(repo)
+    if remote is None:
+        raise Exception('Cannot determine pagure remote')
+    try:
+        info = parse_pagure_url(remote.url)
+    except ValueError:
+        raise Exception('Cannot determine determine project')
+    project = info.project
+
+    # get the pr info
     pr = pcall("%s/pull-request/%s" % (project, prid))
     url, remote_branch = get_pr_source(pr)
 
-    cwd = os.getcwd()
-    path = pygit2.discover_repository(cwd)
-    repo = pygit2.Repository(path)
+    # fetch the pr ref (not to a branch yet)
+    src_ref = 'refs/pull/%s/head' % prid
+    dst_ref = 'refs/pagure-pull/%s/%s' % (remote.name, prid)
+              # note: dst_ref should match fetchall command
+    refspec= '+%s:%s' % (src_ref, dst_ref)
+    cmd = ['git', 'fetch', remote.name, refspec]
+    subprocess.check_call(cmd)
 
+    # branch check
     branch = "pagure/pr/%s" % prid
     fullref = 'refs/heads/%s' % branch
     if repo.head.name == fullref:
         print "Already on branch %s" % branch
+        # TODO: show if branch needs updating
+        # TODO: detect if ff possible
         # TODO: handle updating the branch
         subprocess.call(['git', 'status'])
         return
 
-    # current version of pygit2 doesn't seem to be able to fetch from
-    # arbitrary urls
-    cmd = ['git', 'fetch', url, remote_branch]
-    subprocess.check_call(cmd)
     local_brs = repo.listall_branches(pygit2.GIT_BRANCH_LOCAL)
-    if branch in local_brs:
-        print "Reusing branch: %s" % branch
-        cmd = ['git', 'update-ref',
-                '-m', 'pg: updating branch %s' % branch,
-                fullref, 'FETCH_HEAD']
-        subprocess.check_call(cmd)
-    else:
+    for _case in [1]:
+        # see if our specially named branch already exists
+        if branch in local_brs:
+            print "Reusing branch: %s" % branch
+            # TODO: show if branch needs updating
+            # TODO: update branch if we can
+            break
+        # see if we have the original branch
         obj = repo.get(pr['commit_stop'])
+        if remote_branch in local_brs:
+            bref = repo.lookup_branch(remote_branch)
+            if bref.target == obj.oid:
+                # TODO - determine if we are ahead/behind
+                branch = remote_branch
+                print "Reusing local branch: %s" % branch
+                break
+            elif contains(obj, bref.get_object()):
+                branch = remote_branch
+                print "Reusing local branch: %s" % branch
+                print "Warning: local branch is behind PR: %s" % obj.oid
+                break
+            elif contains(bref.get_object(), obj):
+                branch = remote_branch
+                print "Reusing local branch: %s" % branch
+                print "Warning: local branch is ahead of PR: %s" % obj.oid
+                break
+            else:
+                print("WARNING: local branch with same name as pr does not match")
+        # see if we have a matching branch by another name
+        found = False
         for br in local_brs:
             bref = repo.lookup_branch(br)
             if bref.target == obj.oid:
-                branch = br
-                print "Reusing local branch: %s" % branch
+                found = True
                 break
-        else:
-            # make our own
-            cmd = ['git', 'branch', branch, 'FETCH_HEAD']
-            subprocess.check_call(cmd)
-            print "New branch: %s" % branch
+        if found:
+            branch = br
+            print "Reusing local branch: %s" % branch
+            break
+        # otherwise make our own
+        cmd = ['git', 'branch', branch, dst_ref]
+        subprocess.check_call(cmd)
+        print "New branch: %s" % branch
 
     # not sure I trust pygit2's checkout function
     cmd = ['git', 'checkout', branch]
     subprocess.check_call(cmd)
     # TODO: --follow option ?
+
+
+def contains(a, b):
+    """Determine if commit a contains commit b
+
+    a,b: pygit2 commit objects
+    """
+    stack = [a]
+    seen = set()
+    while stack:
+        obj = stack.pop(0)
+        if obj.oid in seen:
+            # we may have gotten here via another path already
+            continue
+        seen.add(obj.oid)
+        if obj.oid == b.oid:
+            return True
+        else:
+            stack.extend(obj.parents)
+    return False
+
+
+# XXX DEBUGGING
+@pg.command('contains')
+@click.argument('a')
+@click.argument('b')
+def test_contains(a, b):
+    repo = get_repo()
+    A = repo.lookup_reference(a).get_object()
+    B = repo.lookup_reference(b).get_object()
+    print contains(A,B)
 
 
 @pr.command('merge')
@@ -210,9 +292,7 @@ def pr_merge(**opts):
     if project is None:
         raise Exception('Must be run from pagure checkout')
 
-    cwd = os.getcwd()
-    path = pygit2.discover_repository(cwd)
-    repo = pygit2.Repository(path)
+    repo = get_repo()
 
     # determine pr from branch
     if not repo.head.name.startswith('refs/heads/'):

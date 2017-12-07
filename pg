@@ -225,7 +225,6 @@ def pr_checkout(prid, **opts):
     fullref = 'refs/heads/%s' % branch
     if repo.head.name == fullref:
         print "Already on branch %s" % branch
-        subprocess.call(['git', 'status'])
     else:
         cmd = ['git', 'checkout', branch]
         subprocess.check_call(cmd)
@@ -252,25 +251,14 @@ def pr_checkout(prid, **opts):
     if opts['reset'] and ref.target != obj.oid:
         print("RESETTING branch to match PR")
         print("Ref was: %s" % ref.target)
-        # avoiding use of reset command as it is a little risky
-
-        # check out the bare ref
-        # - if we stay on the branch, update-ref acts like a soft reset
-        # - the sanity checks of the checkout command work in our favor
-        cmd = ['git', 'checkout', dst_ref]
-        subprocess.check_call(cmd, stdout=open('/dev/null', 'w'))
-
-        # update the ref for our branch
-        cmd = ['git', 'update-ref',
-               '-m', 'pg: resetting branch %s for pr %s' % (branch, prid),
-               'refs/heads/%s' % branch, dst_ref]
+        cmd = ['git', 'reset', '--keep', dst_ref]
         subprocess.check_call(cmd)
+        # Note the --keep. From the man page:
+        # "If a file that is different between <commit> and HEAD has local
+        #  changes, reset is aborted."
 
-        # check out the branch again
-        # - this should be a non-op for the index and tree since the ref
-        #   is the same
-        cmd = ['git', 'checkout', branch]
-        subprocess.check_call(cmd)
+    # probably a good idea to show status now
+    subprocess.call(['git', 'status'])
 
 
 def contains(a, b):

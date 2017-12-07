@@ -165,6 +165,7 @@ def pr_fetchall():
 
 @pr.command('checkout')
 @click.argument('prid')
+@click.option('--local/--no-local', default=True)
 def pr_checkout(prid, **opts):
     """Checkout the given pull request"""
 
@@ -191,66 +192,59 @@ def pr_checkout(prid, **opts):
     cmd = ['git', 'fetch', remote.name, refspec]
     subprocess.check_call(cmd)
 
-    # branch check
-    branch = "pagure/pr/%s" % prid
-    fullref = 'refs/heads/%s' % branch
-    if repo.head.name == fullref:
-        print "Already on branch %s" % branch
-        # TODO: show if branch needs updating
-        # TODO: detect if ff possible
-        # TODO: handle updating the branch
-        subprocess.call(['git', 'status'])
-        return
-
+    # find or make our branch
     local_brs = repo.listall_branches(pygit2.GIT_BRANCH_LOCAL)
     for _case in [1]:
+
         # see if our specially named branch already exists
-        if branch in local_brs:
+        def_branch = "pagure/pr/%s" % prid
+        if def_branch in local_brs:
+            branch = def_branch
             print "Reusing branch: %s" % branch
-            # TODO: show if branch needs updating
-            # TODO: update branch if we can
             break
+
         # see if we have the original branch
-        obj = repo.get(pr['commit_stop'])
-        if remote_branch in local_brs:
-            bref = repo.lookup_branch(remote_branch)
-            if bref.target == obj.oid:
-                # TODO - determine if we are ahead/behind
-                branch = remote_branch
-                print "Reusing local branch: %s" % branch
-                break
-            elif contains(obj, bref.get_object()):
-                branch = remote_branch
-                print "Reusing local branch: %s" % branch
-                print "Warning: local branch is behind PR: %s" % obj.oid
-                break
-            elif contains(bref.get_object(), obj):
-                branch = remote_branch
-                print "Reusing local branch: %s" % branch
-                print "Warning: local branch is ahead of PR: %s" % obj.oid
-                break
-            else:
-                print("WARNING: local branch with same name as pr does not match")
-        # see if we have a matching branch by another name
-        found = False
-        for br in local_brs:
-            bref = repo.lookup_branch(br)
-            if bref.target == obj.oid:
-                found = True
-                break
-        if found:
-            branch = br
+        # XXX: really need a better check here
+        #      unrelated branches could easily have overlapping names
+        if (opts['local']
+                and remote_branch != 'master'  # why do people do this?
+                and remote_branch in local_brs):
             print "Reusing local branch: %s" % branch
+            branch = remote_branch
             break
+
         # otherwise make our own
+        branch = def_branch
         cmd = ['git', 'branch', branch, dst_ref]
         subprocess.check_call(cmd)
         print "New branch: %s" % branch
 
-    # not sure I trust pygit2's checkout function
-    cmd = ['git', 'checkout', branch]
-    subprocess.check_call(cmd)
-    # TODO: --follow option ?
+    # check out, unless we're already on it
+    fullref = 'refs/heads/%s' % branch
+    if repo.head.name == fullref:
+        print "Already on branch %s" % branch
+        subprocess.call(['git', 'status'])
+    else:
+        cmd = ['git', 'checkout', branch]
+        subprocess.check_call(cmd)
+
+    # now that we are checked out, see if we need updating
+    obj = repo.get(pr['commit_stop'])
+    ref = repo.head
+    if ref.target == obj.oid:
+        print "PR branch %s is up to date" % branch
+    elif contains(obj, ref.get_object()):
+        # we're behind
+        print "Fast-forwarding..."
+        cmd = ['git', 'merge', '--ff-only', dst_ref]
+        subprocess.check_call(cmd)
+    elif contains(ref.get_object(), obj):
+        # we're ahead
+        print "Warning: local branch is ahead of PR: %s" % obj.oid
+    else:
+        print("WARNING: local branch has deviated from PR")
+        print("PR:    %s" % obj.oid)
+        print("Local: %s" % ref.target)
 
 
 def contains(a, b):

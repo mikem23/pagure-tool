@@ -243,10 +243,15 @@ def pr_checkout(prid, **opts):
     elif contains(ref.get_object(), obj):
         # we're ahead
         print "Warning: local branch is ahead of PR: %s" % obj.oid
+        cmd = ['git', 'log', '--graph', '--oneline', '%s..HEAD' % dst_ref]
+        subprocess.call(cmd)
     else:
         print("WARNING: local branch has deviated from PR")
         print("PR:    %s (%s)" % (obj.oid, dst_ref))
         print("Local: %s (%s)" % (ref.target, branch))
+        cmd = ['git', 'log', '--left-right', '--graph', '--cherry-pick',
+               '--oneline', 'HEAD...%s' % dst_ref]
+        subprocess.call(cmd)
 
     if opts['reset'] and ref.target != obj.oid:
         print("RESETTING branch to match PR")
@@ -256,9 +261,6 @@ def pr_checkout(prid, **opts):
         # Note the --keep. From the man page:
         # "If a file that is different between <commit> and HEAD has local
         #  changes, reset is aborted."
-
-    # probably a good idea to show status now
-    subprocess.call(['git', 'status'])
 
 
 def contains(a, b):

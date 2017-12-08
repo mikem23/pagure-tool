@@ -245,13 +245,13 @@ def pr_checkout(prid, **opts):
     elif contains(ref.get_object(), obj):
         # we're ahead
         print "Warning: local branch is ahead of PR: %s" % obj.oid
-        cmd = ['git', 'log', '--graph', '--oneline', '%s..HEAD' % dst_ref]
+        cmd = ['git', '--no-pager', 'log', '--graph', '--oneline', '%s..HEAD' % dst_ref]
         subprocess.call(cmd)
     else:
         print("WARNING: local branch has deviated from PR")
         print("PR:    %s (%s)" % (obj.oid, dst_ref))
         print("Local: %s (%s)" % (ref.target, branch))
-        cmd = ['git', 'log', '--left-right', '--graph', '--cherry-pick',
+        cmd = ['git', '--no-pager', 'log', '--left-right', '--graph', '--cherry-pick',
                '--oneline', 'HEAD...%s' % dst_ref]
         subprocess.call(cmd)
 

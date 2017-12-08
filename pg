@@ -186,6 +186,8 @@ def pr_checkout(prid, **opts):
     pr = pcall("%s/pull-request/%s" % (project, prid))
     url, remote_branch = get_pr_source(pr)
 
+    # TODO - Note if branch matches last ref before we re-fetch
+
     # fetch the pr ref (not to a branch yet)
     src_ref = 'refs/pull/%s/head' % prid
     dst_ref = 'refs/pagure-pull/%s/%s' % (remote.name, prid)
@@ -211,8 +213,8 @@ def pr_checkout(prid, **opts):
         if (opts['local']
                 and remote_branch != 'master'  # why do people do this?
                 and remote_branch in local_brs):
-            print "Reusing local branch: %s" % branch
             branch = remote_branch
+            print "Reusing local branch: %s" % branch
             break
 
         # otherwise make our own
@@ -457,7 +459,7 @@ ISSUE_FIX_RE = re.compile(
 
 ISSUE_RELATE_RE = re.compile(
             r'''(?:.*\s+)?                      # junk at beginning
-                (?:relate[sd]?)                 # verb
+                (?:relate[sd]?(?:\s+to))        # verb
                 :?\s*                           # optional separation
                 (?:https?://.*/(\w+)/issue/)?   # optional url
                 [#]?(\d+)                       # issue number

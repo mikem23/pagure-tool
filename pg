@@ -363,37 +363,10 @@ def pr_merge(**opts):
 
     # issues
     fixes, relates = get_pr_issues(project, pr)
-    if fixes or relates:
-        parts.append(
-                "# The issues below were derived from the pull request\n"
-                "# Please verify their accuracy before committing\n"
-                )
-    else:
-        parts.append('# (no referenced issues found)\n')
-
-    def issuetext(info):
-        lines = ["%(_verb)s: #%(id)s"]
-        if info['_verb'] != 'Fixes':
-            lines.append("# Fixes #%(id)s")
-        lines.extend([
-                "%(_url)s",
-                "%(title)s",
-                "# Status: %(status)s",
-                "",
-                ])
-        return '\n'.join(lines) % issue
-
-    for issue in fixes:
-        issue['_url'] = issue_url(pr['project'], issue)
-        issue['_verb'] = 'Fixes'
-        parts.append(issuetext(issue))
-    for issue in relates:
-        issue['_url'] = issue_url(pr['project'], issue)
-        issue['_verb'] = 'Relates'
-        parts.append(issuetext(issue))
-    msg = '\n'.join(parts)
+    parts.extend(format_pr_issues(pr, fixes, relates))
 
     # finally, do the merge
+    msg = '\n'.join(parts)
     cmd = ['git', 'merge', '--edit', '-m', msg, '--no-ff', branch]
     subprocess.check_call(cmd)
 
@@ -466,6 +439,43 @@ ISSUE_RELATE_RE = re.compile(
             ''', re.X|re.I)
 
 
+def format_pr_issues(pr, fixes, relates):
+    """Format the output of get_pr_issues
+
+    Returns a list of strings that should be joined with '\n'
+    """
+    parts = []
+    if fixes or relates:
+        parts.append(
+                "# The issues below were derived from the pull request\n"
+                "# Please verify their accuracy before committing\n"
+                )
+    else:
+        parts.append('# (no referenced issues found)\n')
+
+    def issuetext(info):
+        lines = ["%(_verb)s: #%(id)s"]
+        if info['_verb'] != 'Fixes':
+            lines.append("# Fixes #%(id)s")
+        lines.extend([
+                "%(_url)s",
+                "%(title)s",
+                "# Status: %(status)s",
+                "",
+                ])
+        return '\n'.join(lines) % issue
+
+    for issue in fixes:
+        issue['_url'] = issue_url(pr['project'], issue)
+        issue['_verb'] = 'Fixes'
+        parts.append(issuetext(issue))
+    for issue in relates:
+        issue['_url'] = issue_url(pr['project'], issue)
+        issue['_verb'] = 'Relates'
+        parts.append(issuetext(issue))
+    return parts
+
+
 def get_pr_issues(project, prinfo):
     """Return issues that seem to be related to the pr"""
     fixes = []
@@ -522,8 +532,9 @@ def pr_issues(prid, project, **opts):
         if project is None:
             raise Exception('Please specify a project')
     pr = pcall("%s/pull-request/%s" % (project, prid))
-    issues = get_pr_issues(project, pr)
-    pprint.pprint(issues)
+    fixes, relates = get_pr_issues(project, pr)
+    parts = format_pr_issues(pr, fixes, relates)
+    print('\n'.join(parts))
 
 
 @pr.command('list')

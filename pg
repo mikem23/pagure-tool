@@ -121,7 +121,7 @@ def prinfo(prid, project, **opts):
         return
 
     print "PR#%(id)i: %(title)s" % pr
-    print "https://pagure.io/koji/pull-request/%(id)i" % pr
+    print "https://pagure.io/{project[name]}/pull-request/{id}".format(**pr)
     print "Status: %(status)s" % pr
     print "User: %s" % pr['user']['name']
     print "Created: %s" % time.asctime(time.localtime(float(pr['date_created'])))
@@ -354,11 +354,11 @@ def pr_merge(**opts):
     # generate standard commit message
     pr = pcall("%s/pull-request/%s" % (project, prid))
     msg = (
-            "PR#%(id)i: %(title)s\n"
+            "PR#{id}: {title}\n"
             "\n"
-            "Merges #%(id)i\n"
-            "https://pagure.io/koji/pull-request/%(id)i\n"
-            ) % pr
+            "Merges #{id}\n"
+            "https://pagure.io/{project[name]}/pull-request/{id}\n"
+            ).format(**pr)
     parts = [msg]
 
     # issues
@@ -597,7 +597,7 @@ def pr_recent(project, since, closer):
                 continue
         print "-------------------"
         print "PR#%(id)i: %(title)s [%(status)s]" % pr
-        print "https://pagure.io/koji/pull-request/%(id)i" % pr
+        print "https://pagure.io/{project[name]}/pull-request/{id}".format(**pr)
         print "Status: %(status)s" % pr
         print "User: %s" % pr['user']['name']
         if int(pr['date_created']) > cutoff:
@@ -806,9 +806,10 @@ def issue_recent(project, since):
     for issue in issues:
         if issue['utime'] < cutoff:
             continue
+        issue['project'] = project
         print "-------------------"
         print "Issue#%(id)i: %(title)s [%(status)s]" % issue
-        print "https://pagure.io/koji/issue/%(id)i" % issue
+        print "https://pagure.io/{project}/issue/{id}".format(**issue)
         print "User: %s" % issue['user']['name']
         if int(issue['date_created']) > cutoff:
             print "Created: %s" % time.asctime(time.localtime(float(issue['date_created'])))

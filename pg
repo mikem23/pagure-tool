@@ -537,6 +537,33 @@ def pr_issues(prid, project, **opts):
     print('\n'.join(parts))
 
 
+# XXX test command
+@pr.command('relnote')
+@click.argument('prid')
+@click.option('-p', '--project')
+def pr_relnote(prid, project, **opts):
+    """Generate a *very* crude release note for the PR"""
+    if project is None:
+        project = get_project()
+        if project is None:
+            raise Exception('Please specify a project')
+    pr = pcall("%s/pull-request/%s" % (project, prid))
+    print(pr['title'])
+    print('^' * len(pr['title']))
+    print('')
+    print('| PR: https://pagure.io/{project[name]}/pull-request/{id}'.format(**pr))
+    print('')
+    print(pr['initial_comment'])
+    print('')
+    fixes, relates = get_pr_issues(project, pr)
+    for issue in fixes + relates:
+        issue['project'] = project
+        print('..\n'
+              '    https://pagure.io/{project}/issue/{id}\n'
+              '    {title}\n\n'
+              '{content}\n'.format(**issue))
+
+
 @pr.command('list')
 @click.option('-p', '--project')
 @click.option('-o', '--order', default='utime')

@@ -163,6 +163,30 @@ def pr_fetchall():
     subprocess.check_call(cmd)
 
 
+def do_fetch_pr(remote, prid):
+    """fetch the pr ref (not to a branch)"""
+    src_ref = 'refs/pull/%s/head' % prid
+    dst_ref = 'refs/pagure-pull/%s/%s' % (remote.name, prid)
+              # note: dst_ref should match fetchall command
+    refspec= '+%s:%s' % (src_ref, dst_ref)
+    cmd = ['git', 'fetch', remote.name, refspec]
+    subprocess.check_call(cmd)
+    return dst_ref
+
+
+@pr.command('fetch')
+@click.argument('prid')
+def pr_checkout(prid):
+    """Just fetch the given pull request"""
+    # figure out repo and project info
+    repo = get_repo()
+    remote = pick_pagure_remote(repo)
+    if remote is None:
+        raise Exception('Cannot determine pagure remote')
+    dst_ref = do_fetch_pr(remote, prid)
+    print("PR #%s fetched to %s" % (prid, dst_ref))
+
+
 @pr.command('checkout')
 @click.argument('prid')
 @click.option('--local/--no-local', default=True)
@@ -189,12 +213,7 @@ def pr_checkout(prid, **opts):
     # TODO - Note if branch matches last ref before we re-fetch
 
     # fetch the pr ref (not to a branch yet)
-    src_ref = 'refs/pull/%s/head' % prid
-    dst_ref = 'refs/pagure-pull/%s/%s' % (remote.name, prid)
-              # note: dst_ref should match fetchall command
-    refspec= '+%s:%s' % (src_ref, dst_ref)
-    cmd = ['git', 'fetch', remote.name, refspec]
-    subprocess.check_call(cmd)
+    dst_ref = do_fetch_pr(remote, prid)
 
     # find or make our branch
     local_brs = repo.listall_branches(pygit2.GIT_BRANCH_LOCAL)

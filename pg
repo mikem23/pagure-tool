@@ -464,7 +464,7 @@ ISSUE_FIX_RE = re.compile(
 
 ISSUE_RELATE_RE = re.compile(
             r'''(?:.*\s+)?                      # junk at beginning
-                (?:relate[sd]?(?:\s+to))        # verb
+                (?:relate[sd]?(?:\s+to)?)       # optional verb
                 (?:issue|bug)?                  # optional descriptor
                 :?\s*                           # optional separation
                 (?:https?://.*/(\w+)/issue/)?   # optional url

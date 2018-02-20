@@ -285,6 +285,9 @@ def pr_checkout(prid, **opts):
         cmd = ['git', '--no-pager', 'log', '--left-right', '--graph', '--cherry-pick',
                '--oneline', 'HEAD...%s' % dst_ref]
         subprocess.call(cmd)
+        print('Here is the reflog:')
+        cmd = ['git', '--no-pager', 'reflog', branch]
+        subprocess.call(cmd)
 
     if (opts['reset'] or safe_reset) and ref.target != obj.oid:
         print("RESETTING branch to match PR")

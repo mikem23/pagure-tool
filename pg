@@ -272,7 +272,8 @@ def pr_checkout(prid, **opts):
     elif contains(ref.get_object(), obj):
         # we're ahead
         print "Warning: local branch is ahead of PR: %s" % obj.oid
-        cmd = ['git', '--no-pager', 'log', '--graph', '--oneline', '%s..HEAD' % dst_ref]
+        cmd = ['git', '--no-pager', 'log', '--graph', '--oneline',
+               '--first-parent', '%s..HEAD' % dst_ref]
         subprocess.call(cmd)
     elif last_ref and ref.get_object().oid == last_ref:
         # We have a previous version of the PR, which has likely been rebased
@@ -280,11 +281,6 @@ def pr_checkout(prid, **opts):
         safe_reset = True
     else:
         print("WARNING: local branch has deviated from PR")
-        print("PR:    %s (%s)" % (obj.oid, dst_ref))
-        print("Local: %s (%s)" % (ref.target, branch))
-        cmd = ['git', '--no-pager', 'log', '--left-right', '--graph', '--cherry-pick',
-               '--oneline', 'HEAD...%s' % dst_ref]
-        subprocess.call(cmd)
         print('Here is the reflog:')
         cmd = ['git', '--no-pager', 'reflog', branch]
         subprocess.call(cmd)
@@ -866,7 +862,7 @@ def issuelist(project, order, fmt, with_pr, **opts):
     if order:
         o_keys = order.split(',')
         issues.sort(key=lambda row: [row.get(k) for k in o_keys])
-    for row in data['issues']:
+    for row in issues:
         print(fmt.format(**row))
 
 

@@ -360,12 +360,19 @@ def pr_merge(**opts):
         # TODO: show differences
         if opts['rebase']:
             # for safety, we will not rebase a modified branch
-            Exception("Auto-rebase not safe on modified branch")
+            raise Exception("Auto-rebase not safe on modified branch")
         if not opts['force']:
             raise Exception('Use --force to merge a modified PR branch')
 
     # get target branch
     target_branch = pr['branch']
+    if target_branch != 'master':
+        print('Warning: merge target is %s' % target_branch)
+    # check our local branch matches
+    lbr = repo.branches.local[target_branch]
+    rbr = repo.branches.remote['origin/%s' % target_branch]
+    if lbr.target != rbr.target:
+        raise Exception('Target branch %s does not match remote' % target_branch)
 
     if opts['rebase']:
         cmd = ['git', 'fetch', 'origin']

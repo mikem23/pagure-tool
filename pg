@@ -40,6 +40,25 @@ def pcall(path, query=None, api=0, baseurl=BASEURL):
     return data
 
 
+def all_pages(path, query=None, api=0, baseurl=BASEURL):
+    '''Query all pages and combine results'''
+    if query is None:
+        query = {}
+    query['page'] = 1
+    query['per_page'] = 100
+    data = {}
+    while True:
+        page = pcall(path, query, api, baseurl)
+        for key in page:
+            if isinstance(page[key], list):
+                # XXX should we worry about dups here?
+                data.setdefault(key, []).extend(page[key])
+        if page['pagination']['pages'] <= query['page']:
+            break
+        query['page'] += 1
+    return data
+
+
 @click.group()
 def pg():
     # main command
@@ -420,7 +439,7 @@ def get_pr_from_branch(project, repo, branch):
     if branch.startswith('pagure/pr/'):
         return branch[10:]
     # check to see if a PR head matches repo.head.target
-    data = pcall('%s/pull-requests' % project)
+    data = all_pages('%s/pull-requests' % project)
     matches = []
     for pr in data['requests']:
         url, pr_branch = get_pr_source(pr)
@@ -614,7 +633,7 @@ def pr_list(project, order):
         project = get_project()
         if project is None:
             raise Exception('Please provide a project')
-    data = pcall('%s/pull-requests' % project)
+    data = all_pages('%s/pull-requests' % project)
     # count = data['total_requests']
     prs = data['requests']
     for pr in prs:
@@ -642,7 +661,7 @@ def pr_recent(project, since, closer):
         project = get_project()
         if project is None:
             raise Exception('Please provide a project')
-    data = pcall('%s/pull-requests' % project)
+    data = all_pages('%s/pull-requests' % project)
     prs = data['requests']
     for pr in prs:
         ts = int(pr['updated_on'])
@@ -733,7 +752,7 @@ def project_path(project):
 def list_projects(pattern, **opts):
     if pattern:
         opts['pattern'] = pattern
-    data = pcall('projects', opts)
+    data = all_pages('projects', opts)
     # count = data['total_projects']
 
     # XXX - revert this
@@ -855,7 +874,7 @@ def issuelist(project, order, fmt, with_pr, **opts):
         val = opts['since']
         dt = dateutil.parser.parse(val)
         opts['since'] = int(time.mktime(dt.timetuple()))
-    data = pcall("%s/issues" % project, opts)
+    data = all_pages("%s/issues" % project, opts)
     issues = data['issues']
     if with_pr:
         pr_map = get_pr_map(project)
@@ -876,7 +895,7 @@ def issuelist(project, order, fmt, with_pr, **opts):
 def get_pr_map(project):
     # XXX: lots of duplicate lookups in with caller
     # XXX: sloooooow
-    data = pcall('%s/pull-requests' % project)
+    data = all_pages('%s/pull-requests' % project)
     pr_map = {}
     for pr in data['requests']:
         fixes, relates = get_pr_issues(project, pr)
@@ -902,7 +921,7 @@ def issue_recent(project, since):
         if project is None:
             raise Exception('Please provide a project')
     # not sure if I trust the api's since filter
-    data = pcall("%s/issues" % project)
+    data = all_pages("%s/issues" % project)
     issues = data['issues']
     for issue in issues:
         ts1 = int(issue['date_created'] or 0)

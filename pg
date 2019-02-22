@@ -609,8 +609,8 @@ def pr_relnote(prid, project, **opts):
         if project is None:
             raise Exception('Please specify a project')
     pr = pcall("%s/pull-request/%s" % (project, prid))
-    print(pr['title'])
-    print('^' * len(pr['title']))
+    print('** %(title)s **' % pr)
+    # print('^' * len(pr['title']))
     print('')
     print('| PR: https://pagure.io/{project[name]}/pull-request/{id}'.format(**pr))
     print('')

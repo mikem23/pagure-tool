@@ -26,7 +26,6 @@ def pcall(path, query=None, api=0, baseurl=BASEURL):
     elif query is not None:
         query = urllib.urlencode(query, True)
         url = "%s?%s" % (url, query)
-    print "DEBUG: %s" % url
     r = requests.get(url)
     try:
         data = r.json()

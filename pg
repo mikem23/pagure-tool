@@ -345,6 +345,8 @@ def test_contains(a, b):
 
 
 @pr.command('merge')
+@click.option('--to', '--target')
+@click.option('--pr', '--pull-request')
 @click.option('--force/--no-force', '-f/')
 @click.option('--rebase/--no-rebase', '-r/')
 def pr_merge(**opts):
@@ -358,8 +360,10 @@ def pr_merge(**opts):
     if not repo.head.name.startswith('refs/heads/'):
         raise Exception("HEAD is not a branch")
     branch = repo.head.name[11:]
-    prid = get_pr_from_branch(project, repo, branch)
-    print "PR branch for %s" % prid
+    prid = opts.get('pull_request')
+    if prid is None:
+        prid = get_pr_from_branch(project, repo, branch)
+        print "PR branch for %s" % prid
 
     pr = pcall("%s/pull-request/%s" % (project, prid))
     url, remote_branch = get_pr_source(pr)
@@ -382,15 +386,20 @@ def pr_merge(**opts):
         if not opts['force']:
             raise Exception('Use --force to merge a modified PR branch')
 
-    # get target branch
-    target_branch = pr['branch']
-    if target_branch != 'master':
-        print('Warning: merge target is %s' % target_branch)
-    # check our local branch matches
-    lbr = repo.branches.local[target_branch]
-    rbr = repo.branches.remote['origin/%s' % target_branch]
-    if lbr.target != rbr.target:
-        raise Exception('Target branch %s does not match remote' % target_branch)
+    if opts['target']:
+        target_branch = opts['target']
+        if target_branch not in repo.branches.local:
+            raise Exception('No such branch: %s' % target_branch)
+    else:
+        # get target branch
+        target_branch = pr['branch']
+        if target_branch != 'master':
+            print('Warning: merge target is %s' % target_branch)
+        # check our local branch matches
+        lbr = repo.branches.local[target_branch]
+        rbr = repo.branches.remote['origin/%s' % target_branch]
+        if lbr.target != rbr.target:
+            raise Exception('Target branch %s does not match remote' % target_branch)
 
     if opts['rebase']:
         cmd = ['git', 'fetch', 'origin']
@@ -402,9 +411,11 @@ def pr_merge(**opts):
     cmd = ['git', 'checkout', target_branch]
     subprocess.check_call(cmd)
 
-    # TODO: this should probably be an option
-    cmd = ['git', 'pull', '--ff-only']
-    subprocess.check_call(cmd)
+    # XXX: we should have a better sanity check when there is an explicit target
+    if not opts['target']:
+        # TODO: this should probably be an option
+        cmd = ['git', 'pull', '--ff-only']
+        subprocess.check_call(cmd)
 
     # generate standard commit message
     pr = pcall("%s/pull-request/%s" % (project, prid))

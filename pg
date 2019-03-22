@@ -97,6 +97,8 @@ def pick_pagure_remote(repo):
         url = remote.url
         if 'pagure.io' in url:  # XXX should be smarter
             choices[remote.name] = remote
+        elif remote.name == 'pagure':
+            choices[remote.name] = remote
     if 'origin' in choices:
         return choices['origin']
     elif choices:
@@ -129,14 +131,22 @@ def parse_pagure_url(url):
 @click.argument('prid')
 @click.option('-p', '--project')
 @click.option('--json/--no-json')
+@click.option('--flags/--no-flags')
 def prinfo(prid, project, **opts):
     if project is None:
         project = get_project()
         if project is None:
             raise Exception('Please specify a project')
     pr = pcall("%s/pull-request/%s" % (project, prid))
+    if opts['flags']:
+        flags = pcall("%s/pull-request/%s/flag" % (project, prid))
+    else:
+        flags = None
     if opts['json']:
         pprint.pprint(pr)
+        if flags:
+            print('Flags:')
+            pprint.pprint(flags)
         return
 
     print "PR#%(id)i: %(title)s" % pr
@@ -156,6 +166,14 @@ def prinfo(prid, project, **opts):
     print "%(branch_from)s -> %(branch)s" % pr
     if pr['status'] != 'Open':
         print '...'
+    if flags:
+        print("Flags:")
+        for flag in flags['flags']:
+            # web shows: username, comment, status/percent, date_updated
+            flag['_tstr'] = time.asctime(time.localtime(float(flag['date_updated'])))
+            print("%(_tstr)s  %(username)s\t" % flag)
+            print("  %(comment)s" % flag)
+            print("  %(status)s(%(percent)s%%)" % flag)
 
     print
     print "Description:"

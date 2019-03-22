@@ -367,6 +367,7 @@ def test_contains(a, b):
 @click.option('--pr', '--pull-request')
 @click.option('--force/--no-force', '-f/')
 @click.option('--rebase/--no-rebase', '-r/')
+@click.option('--check-flags/--no-check-flags', default=True)
 def pr_merge(**opts):
     project = get_project()
     if project is None:
@@ -385,6 +386,16 @@ def pr_merge(**opts):
 
     pr = pcall("%s/pull-request/%s" % (project, prid))
     url, remote_branch = get_pr_source(pr)
+
+    if opts['check_flags']:
+        flags = pcall("%s/pull-request/%s/flag" % (project, prid))['flags']
+        if flags:
+            # TODO: the flags we care about should be configurable
+            # for now, just check the first (most recent)
+            flag = flags[0]
+            if flag['status'] != 'success':
+                print('Last flag unsuccessful: %(comment)s' % flag)
+                sys.exit(1)
 
     # fetch for comparison
     cmd = ['git', 'fetch', url, remote_branch]

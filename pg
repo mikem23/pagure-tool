@@ -395,7 +395,8 @@ def pr_merge(**opts):
             flag = flags[0]
             if flag['status'] != 'success':
                 print('Last flag unsuccessful: %(comment)s' % flag)
-                sys.exit(1)
+                if not opts['force']:
+                    sys.exit(1)
 
     # fetch for comparison
     cmd = ['git', 'fetch', url, remote_branch]

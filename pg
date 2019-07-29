@@ -18,6 +18,10 @@ import urlparse
 
 BASEURL = 'https://pagure.io'
 
+# XXX - encoding hack
+reload(sys)
+sys.setdefaultencoding("utf-8")
+
 
 def pcall(path, query=None, api=0, baseurl=BASEURL):
     url = "%s/api/%s/%s" % (baseurl, api, path)

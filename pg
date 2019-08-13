@@ -303,19 +303,19 @@ def pr_checkout(prid, **opts):
     safe_reset = False
     if ref.target == obj.oid:
         print "PR branch %s is up to date" % branch
-    elif contains(obj, ref.get_object()):
+    elif contains(obj, peel_ref(ref)):
         # we're behind
         print "Fast-forwarding..."
         cmd = ['git', 'merge', '--ff-only', dst_ref]
         subprocess.check_call(cmd)
         ref = repo.head
-    elif contains(ref.get_object(), obj):
+    elif contains(peel_ref(ref), obj):
         # we're ahead
         print "Warning: local branch is ahead of PR: %s" % obj.oid
         cmd = ['git', '--no-pager', 'log', '--graph', '--oneline',
                '--first-parent', '%s..HEAD' % dst_ref]
         subprocess.call(cmd)
-    elif last_ref and ref.get_object().oid == last_ref:
+    elif last_ref and peel_ref(ref).oid == last_ref:
         # We have a previous version of the PR, which has likely been rebased
         print("WARNING: the PR has been rebased. No local changes detected.")
         safe_reset = True
@@ -355,14 +355,21 @@ def contains(a, b):
     return False
 
 
+def peel_ref(ref):
+    """Compat function for api variation"""
+    if hasattr(ref, 'get_object'):
+        return ref.get_object()
+    return ref.peel()
+
+
 # XXX DEBUGGING
 @pg.command('contains')
 @click.argument('a')
 @click.argument('b')
 def test_contains(a, b):
     repo = get_repo()
-    A = repo.lookup_reference(a).get_object()
-    B = repo.lookup_reference(b).get_object()
+    A = peel_ref(repo.lookup_reference(a))
+    B = peel_ref(repo.lookup_reference(b))
     print contains(A,B)
 
 

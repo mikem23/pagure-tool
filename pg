@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+from __future__ import print_function
 import click
 import dateutil.parser
 import os
@@ -26,13 +27,13 @@ def pcall(path, query=None, api=0, baseurl=BASEURL):
     elif query is not None:
         query = urllib.urlencode(query, True)
         url = "%s?%s" % (url, query)
-    print "DEBUG: %s" % url
+    print("DEBUG: %s" % url)
     r = requests.get(url)
     try:
         data = r.json()
     except Exception:
-        print "Server returned bad value"
-        print r
+        print("Server returned bad value")
+        print(r)
         raise
     if 'error_code' in data:
         s = "%(error_code)s: %(error)s" % data
@@ -121,37 +122,37 @@ def prinfo(prid, project, **opts):
         pprint.pprint(pr)
         return
 
-    print "PR#%(id)i: %(title)s" % pr
-    print "https://pagure.io/{project[name]}/pull-request/{id}".format(**pr)
-    print "Status: %(status)s" % pr
-    print "User: %s" % pr['user']['name']
-    print "Created: %s" % time.asctime(time.localtime(float(pr['date_created'])))
-    print "Updated: %s" % time.asctime(time.localtime(float(pr['updated_on'])))
+    print("PR#%(id)i: %(title)s" % pr)
+    print("https://pagure.io/{project[name]}/pull-request/{id}".format(**pr))
+    print("Status: %(status)s" % pr)
+    print("User: %s" % pr['user']['name'])
+    print("Created: %s" % time.asctime(time.localtime(float(pr['date_created']))))
+    print("Updated: %s" % time.asctime(time.localtime(float(pr['updated_on']))))
     if pr.get('repo_from'):
         # should we use fullname field?
-        print "Fork: %s/%s" % (BASEURL, pr['repo_from']['fullname'])
+        print("Fork: %s/%s" % (BASEURL, pr['repo_from']['fullname']))
     elif pr.get('remote_git'):
-        print "Remote: %(remote_git)s" % pr
+        print("Remote: %(remote_git)s" % pr)
     else:
-        print "Can't determine repo?"
+        print("Can't determine repo?")
         sys.exit(1)
-    print "%(branch_from)s -> %(branch)s" % pr
+    print("%(branch_from)s -> %(branch)s" % pr)
     if pr['status'] != 'Open':
-        print '...'
+        print('...')
 
-    print
-    print "Description:"
-    print pr['initial_comment']
+    print()
+    print("Description:")
+    print(pr['initial_comment'])
 
     for comment in pr['comments']:
-        print
+        print()
         cts = float(comment['date_created'])
         comment['_username'] = comment['user']['name']
         comment['_tstr'] = time.asctime(time.localtime(float(cts)))
-        print "Comment by %(_username)s on %(_tstr)s:" % comment
-        print
-        print comment['comment']
-        print
+        print("Comment by %(_username)s on %(_tstr)s:" % comment)
+        print()
+        print(comment['comment'])
+        print()
 
 
 @pr.command('fetchall')
@@ -185,7 +186,7 @@ def pr_checkout(prid):
     if remote is None:
         raise Exception('Cannot determine pagure remote')
     dst_ref = do_fetch_pr(remote, prid)
-    print("PR #%s fetched to %s" % (prid, dst_ref))
+    print(("PR #%s fetched to %s" % (prid, dst_ref)))
 
 
 @pr.command('checkout')
@@ -224,7 +225,7 @@ def pr_checkout(prid, **opts):
         def_branch = "pagure/pr/%s" % prid
         if def_branch in local_brs:
             branch = def_branch
-            print "Reusing branch: %s" % branch
+            print("Reusing branch: %s" % branch)
             break
 
         # see if we have the original branch
@@ -234,19 +235,19 @@ def pr_checkout(prid, **opts):
                 and remote_branch != 'master'  # why do people do this?
                 and remote_branch in local_brs):
             branch = remote_branch
-            print "Reusing local branch: %s" % branch
+            print("Reusing local branch: %s" % branch)
             break
 
         # otherwise make our own
         branch = def_branch
         cmd = ['git', 'branch', branch, dst_ref]
         subprocess.check_call(cmd)
-        print "New branch: %s" % branch
+        print("New branch: %s" % branch)
 
     # check out, unless we're already on it
     fullref = 'refs/heads/%s' % branch
     if repo.head.name == fullref:
-        print "Already on branch %s" % branch
+        print("Already on branch %s" % branch)
     else:
         cmd = ['git', 'checkout', branch]
         subprocess.check_call(cmd)
@@ -255,29 +256,29 @@ def pr_checkout(prid, **opts):
     obj = repo.get(pr['commit_stop'])
     ref = repo.head
     if ref.target == obj.oid:
-        print "PR branch %s is up to date" % branch
+        print("PR branch %s is up to date" % branch)
     elif contains(obj, ref.get_object()):
         # we're behind
-        print "Fast-forwarding..."
+        print("Fast-forwarding...")
         cmd = ['git', 'merge', '--ff-only', dst_ref]
         subprocess.check_call(cmd)
         ref = repo.head
     elif contains(ref.get_object(), obj):
         # we're ahead
-        print "Warning: local branch is ahead of PR: %s" % obj.oid
+        print("Warning: local branch is ahead of PR: %s" % obj.oid)
         cmd = ['git', '--no-pager', 'log', '--graph', '--oneline', '%s..HEAD' % dst_ref]
         subprocess.call(cmd)
     else:
         print("WARNING: local branch has deviated from PR")
-        print("PR:    %s (%s)" % (obj.oid, dst_ref))
-        print("Local: %s (%s)" % (ref.target, branch))
+        print(("PR:    %s (%s)" % (obj.oid, dst_ref)))
+        print(("Local: %s (%s)" % (ref.target, branch)))
         cmd = ['git', '--no-pager', 'log', '--left-right', '--graph', '--cherry-pick',
                '--oneline', 'HEAD...%s' % dst_ref]
         subprocess.call(cmd)
 
     if opts['reset'] and ref.target != obj.oid:
         print("RESETTING branch to match PR")
-        print("Ref was: %s" % ref.target)
+        print(("Ref was: %s" % ref.target))
         cmd = ['git', 'reset', '--keep', dst_ref]
         subprocess.check_call(cmd)
         # Note the --keep. From the man page:
@@ -313,7 +314,7 @@ def test_contains(a, b):
     repo = get_repo()
     A = repo.lookup_reference(a).get_object()
     B = repo.lookup_reference(b).get_object()
-    print contains(A,B)
+    print(contains(A,B))
 
 
 @pr.command('merge')
@@ -331,7 +332,7 @@ def pr_merge(**opts):
         raise Exception("HEAD is not a branch")
     branch = repo.head.name[11:]
     prid = get_pr_from_branch(project, repo, branch)
-    print "PR branch for %s" % prid
+    print("PR branch for %s" % prid)
 
     pr = pcall("%s/pull-request/%s" % (project, prid))
     url, remote_branch = get_pr_source(pr)
@@ -406,16 +407,16 @@ def get_pr_from_branch(project, repo, branch):
         url, pr_branch = get_pr_source(pr)
         if pr_branch != branch:
             continue
-        print "Branch name match: %(id)s" % pr
+        print("Branch name match: %(id)s" % pr)
         obj = repo.get(pr['commit_stop'])
         if not obj:
             continue
-        print "We have the ref"
+        print("We have the ref")
         # XXX presuming repo.head matches branch
         if obj.oid != repo.head.target:
-            print "branch does not match PR"
-            print "pr: %s" % obj.oid
-            print "us: %s" % repo.head.target
+            print("branch does not match PR")
+            print("pr: %s" % obj.oid)
+            print("us: %s" % repo.head.target)
             continue
         matches.append(pr)
     if not matches:
@@ -517,14 +518,14 @@ def get_pr_issues(project, prinfo):
             if m:
                 if m.group(1) and m.group(1) != prinfo['project']['name']:
                     # XXX
-                    print "cross project issue: %s" % line
+                    print("cross project issue: %s" % line)
                 else:
                     fixes.append(m.group(2))
             m = ISSUE_RELATE_RE.match(line)
             if m:
                 if m.group(1) and m.group(1) != prinfo['project']['name']:
                     # XXX
-                    print "cross project issue: %s" % line
+                    print("cross project issue: %s" % line)
                 else:
                     relates.append(m.group(2))
 
@@ -556,7 +557,7 @@ def pr_issues(prid, project, **opts):
     pr = pcall("%s/pull-request/%s" % (project, prid))
     fixes, relates = get_pr_issues(project, pr)
     parts = format_pr_issues(pr, fixes, relates)
-    print('\n'.join(parts))
+    print(('\n'.join(parts)))
 
 
 # XXX test command
@@ -570,20 +571,20 @@ def pr_relnote(prid, project, **opts):
         if project is None:
             raise Exception('Please specify a project')
     pr = pcall("%s/pull-request/%s" % (project, prid))
-    print(pr['title'])
-    print('^' * len(pr['title']))
+    print((pr['title']))
+    print(('^' * len(pr['title'])))
     print('')
-    print('| PR: https://pagure.io/{project[name]}/pull-request/{id}'.format(**pr))
+    print(('| PR: https://pagure.io/{project[name]}/pull-request/{id}'.format(**pr)))
     print('')
-    print(pr['initial_comment'])
+    print((pr['initial_comment']))
     print('')
     fixes, relates = get_pr_issues(project, pr)
     for issue in fixes + relates:
         issue['project'] = project
-        print('..\n'
+        print(('..\n'
               '    https://pagure.io/{project}/issue/{id}\n'
               '    {title}\n\n'
-              '{content}\n'.format(**issue))
+              '{content}\n'.format(**issue)))
 
 
 @pr.command('list')
@@ -611,7 +612,7 @@ def pr_list(project, order):
             return [pr.get(k) for k in o_keys]
         prs.sort(key=sortkey)
     for pr in prs:
-        print "PR#%(id)i: %(title)s [%(status)s]" % pr
+        print("PR#%(id)i: %(title)s [%(status)s]" % pr)
 
 
 @pr.command('recent')
@@ -662,7 +663,7 @@ def pr_recent(project, since, closer):
                 header.append(
                         "Remote: %(remote_git)s" % pr)
             else:
-                print "WARNING: Can't determine repo?"
+                print("WARNING: Can't determine repo?")
                 sys.exit(1)
             header.append(
                     "%(branch_from)s -> %(branch)s" % pr)
@@ -671,18 +672,18 @@ def pr_recent(project, since, closer):
         elif int(pr['updated_on']) > cutoff:
             header.append(
                     "Updated: %s" % time.asctime(time.localtime(float(pr['updated_on']))))
-        print tabulate([[l] for l in header], tablefmt="psql")
+        print(tabulate([[l] for l in header], tablefmt="psql"))
         for l in lines:
-            print l
+            print(l)
         for comment in pr['comments']:
             cts = float(comment['date_created'])
             if cts < cutoff:
                 continue
             comment['_username'] = comment['user']['name']
             comment['_tstr'] = time.asctime(time.localtime(float(cts)))
-            print "\n## Comment by %(_username)s on %(_tstr)s:\n" % comment
-            print comment['comment']
-            print
+            print("\n## Comment by %(_username)s on %(_tstr)s:\n" % comment)
+            print(comment['comment'])
+            print()
 
 
 def get_cutoff_ts(since):
@@ -719,7 +720,7 @@ def list_projects(pattern, **opts):
     # count = data['total_projects']
     for proj in data['projects']:
         proj['_path'] = project_path(proj)
-        print "%(_path)s: %(description)s" % proj
+        print("%(_path)s: %(description)s" % proj)
 
 
 @pg.group()
@@ -736,7 +737,7 @@ def git_urls(project):
             raise Exception('Please provide a project')
     data = pcall("%s/git/urls" % project)
     for url in data['urls']:  # not a list for some reason
-        print "%s: %s" % (url, data['urls'][url])
+        print("%s: %s" % (url, data['urls'][url]))
 
 
 @project.command('git-tags')
@@ -748,7 +749,7 @@ def git_tags(project):
             raise Exception('Please provide a project')
     data = pcall("%s/git/tags" % project)
     for tag in data['tags']:
-        print tag
+        print(tag)
 
 
 @project.command('git-branches')
@@ -760,7 +761,7 @@ def git_branches(project):
             raise Exception('Please provide a project')
     data = pcall("%s/git/branches" % project)
     for br in data['branches']:
-        print br
+        print(br)
 
 
 @project.command()
@@ -773,7 +774,7 @@ def watchers(project):
     data = pcall("%s/watchers" % project)
     for row in data['watchers']:  # dict, not list
         wtype = data['watchers'][row]
-        print "%s: %s" % (row, wtype)
+        print("%s: %s" % (row, wtype))
 
 
 @project.command("info")
@@ -833,7 +834,7 @@ def issuelist(project, order, fmt, **opts):
             return [row.get(k) for k in o_keys]
         issues.sort(key=sortkey)
     for row in data['issues']:
-        print(fmt.format(**row))
+        print((fmt.format(**row)))
 
 
 @issue.command('recent')
@@ -863,27 +864,27 @@ def issue_recent(project, since):
         if issue['utime'] < cutoff:
             continue
         issue['project'] = project
-        print "-------------------"
-        print "Issue#%(id)i: %(title)s [%(status)s]" % issue
-        print "https://pagure.io/{project}/issue/{id}".format(**issue)
-        print "User: %s" % issue['user']['name']
+        print("-------------------")
+        print("Issue#%(id)i: %(title)s [%(status)s]" % issue)
+        print("https://pagure.io/{project}/issue/{id}".format(**issue))
+        print("User: %s" % issue['user']['name'])
         if int(issue['date_created']) > cutoff:
-            print "Created: %s" % time.asctime(time.localtime(float(issue['date_created'])))
-            print
-            print issue['content']
+            print("Created: %s" % time.asctime(time.localtime(float(issue['date_created']))))
+            print()
+            print(issue['content'])
         elif int(issue['last_updated']) > cutoff:
-            print "Updated: %s" % time.asctime(time.localtime(float(issue['last_updated'])))
+            print("Updated: %s" % time.asctime(time.localtime(float(issue['last_updated']))))
         for comment in issue['comments']:
             cts = float(comment['date_created'])
             if cts < cutoff:
                 continue
             comment['_username'] = comment['user']['name']
             comment['_tstr'] = time.asctime(time.localtime(float(cts)))
-            print "Comment by %(_username)s on %(_tstr)s:" % comment
-            print
-            print
-            print comment['comment']
-            print
+            print("Comment by %(_username)s on %(_tstr)s:" % comment)
+            print()
+            print()
+            print(comment['comment'])
+            print()
 
 
 @issue.command("info")

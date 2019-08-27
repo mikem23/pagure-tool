@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 from __future__ import print_function
+from __future__ import absolute_import
 import click
 import dateutil.parser
 import os
@@ -14,8 +15,9 @@ import sys
 from tabulate import tabulate
 import time
 import traceback
-import urllib
-import urlparse
+import six.moves.urllib.request, six.moves.urllib.parse, six.moves.urllib.error
+import six.moves.urllib.parse
+import six
 
 BASEURL = 'https://pagure.io'
 
@@ -26,10 +28,10 @@ sys.setdefaultencoding("utf-8")
 
 def pcall(path, query=None, api=0, baseurl=BASEURL):
     url = "%s/api/%s/%s" % (baseurl, api, path)
-    if isinstance(query, basestring):
+    if isinstance(query, six.string_types):
         url = "%s?%s" % (url, query)
     elif query is not None:
-        query = urllib.urlencode(query, True)
+        query = six.moves.urllib.parse.urlencode(query, True)
         url = "%s?%s" % (url, query)
     r = requests.get(url)
     try:
@@ -107,14 +109,14 @@ def pick_pagure_remote(repo):
     if 'origin' in choices:
         return choices['origin']
     elif choices:
-        return choices.values()[0]
+        return list(choices.values())[0]
     else:
         return None
 
 
 def parse_pagure_url(url):
     """Parse a pagure git url"""
-    info = urlparse.urlparse(url)
+    info = six.moves.urllib.parse.urlparse(url)
     parts = info.path.split('/')
     parts = [p for p in parts if p]
     if parts[0] == 'forks':

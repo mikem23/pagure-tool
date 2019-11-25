@@ -19,8 +19,14 @@ import urlparse
 BASEURL = 'https://pagure.io'
 
 
-def pcall(path, query=None, api=0, baseurl=BASEURL):
-    url = "%s/api/%s/%s" % (baseurl, api, path)
+def pcall(path=None, query=None, api=0, baseurl=BASEURL, url=None):
+    """Download one page of results. If url is specified,
+    all other components are ignored.
+    """
+    if not url:
+        if path or query or api or baseurl:
+            raise RuntimeException("url is exclusive option")
+        url = "%s/api/%s/%s" % (baseurl, api, path)
     if isinstance(query, basestring):
         url = "%s?%s" % (url, query)
     elif query is not None:
@@ -38,6 +44,16 @@ def pcall(path, query=None, api=0, baseurl=BASEURL):
         s = "%(error_code)s: %(error)s" % data
         raise Exception(s)
     return data
+
+
+def get_pull_requests(project):
+    """Returns all PRs per project"""
+    data = pcall('%s/pull-requests' % project)
+    reqs = data['requests']
+    if 'pagination' in data and 'next':
+        data = pcall(url=data['pagination']['next'])
+        reqs.extend(data['requests'])
+    return reqs
 
 
 @click.group()
@@ -400,9 +416,8 @@ def get_pr_from_branch(project, repo, branch):
     if branch.startswith('pagure/pr/'):
         return branch[10:]
     # check to see if a PR head matches repo.head.target
-    data = pcall('%s/pull-requests' % project)
     matches = []
-    for pr in data['requests']:
+    for pr in get_pull_requests(project):
         url, pr_branch = get_pr_source(pr)
         if pr_branch != branch:
             continue
@@ -594,9 +609,7 @@ def pr_list(project, order):
         project = get_project()
         if project is None:
             raise Exception('Please provide a project')
-    data = pcall('%s/pull-requests' % project)
-    # count = data['total_requests']
-    prs = data['requests']
+    prs = get_pull_requests(project)
     for pr in prs:
         ts = int(pr['updated_on'])
         for comment in pr.get('comments', []):
@@ -624,8 +637,7 @@ def pr_recent(project, since, closer):
         project = get_project()
         if project is None:
             raise Exception('Please provide a project')
-    data = pcall('%s/pull-requests' % project)
-    prs = data['requests']
+    prs = get_pull_requests(project)
     for pr in prs:
         ts = int(pr['updated_on'])
         for comment in pr.get('comments', []):

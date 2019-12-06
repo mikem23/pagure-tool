@@ -21,9 +21,10 @@ import six
 
 BASEURL = 'https://pagure.io'
 
-# XXX - encoding hack
-reload(sys)
-sys.setdefaultencoding("utf-8")
+if six.PY2:
+    # XXX - encoding hack
+    reload(sys)
+    sys.setdefaultencoding("utf-8")
 
 
 def pcall(path, query=None, api=0, baseurl=BASEURL):

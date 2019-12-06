@@ -96,7 +96,7 @@ def get_project(cwd=None):
         info = parse_pagure_url(remote.url)
     except ValueError:
         return None
-    return info.project
+    return info['project']
 
 
 def pick_pagure_remote(repo):
@@ -117,22 +117,24 @@ def pick_pagure_remote(repo):
 
 def parse_pagure_url(url):
     """Parse a pagure git url"""
+    ret = {}
     info = six.moves.urllib.parse.urlparse(url)
+    ret['info'] = info
     parts = info.path.split('/')
     parts = [p for p in parts if p]
     if parts[0] == 'forks':
-        info.parent = parts[1]
+        ret['parent'] = parts[1]
         parts = parts[2:]
     if len(parts) > 1:
-        info.namespace = parts[0]
+        ret['namespace'] = parts[0]
         parts = parts[1:]
     if len(parts) > 1:
         raise ValueError('Too many url path components: %s' % url)
     project = parts[0]
     if project.endswith('.git'):
         project = project[:-4]
-    info.project = project
-    return info
+    ret['project'] = project
+    return ret
 
 
 @pr.command('info')
@@ -249,7 +251,7 @@ def pr_checkout(prid, **opts):
         info = parse_pagure_url(remote.url)
     except ValueError:
         raise Exception('Cannot determine determine project')
-    project = info.project
+    project = info['project']
 
     # get the pr info
     pr = pcall("%s/pull-request/%s" % (project, prid))

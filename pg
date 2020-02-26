@@ -422,6 +422,8 @@ def pr_merge(**opts):
     # pygit2 can't give me FETCH_HEAD
     cmd = ['git', 'rev-parse', 'FETCH_HEAD']
     remote_ref = subprocess.check_output(cmd).strip()
+    if six.PY3:
+        remote_ref = remote_ref.decode('ascii')
     remote_obj = repo.get(remote_ref)
 
     if remote_obj.oid != repo.head.target:

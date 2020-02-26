@@ -380,8 +380,8 @@ def test_contains(a, b):
 
 
 @pr.command('merge')
-@click.option('--to', '--target')
-@click.option('--pr', '--pull-request')
+@click.option('--to', '--target', 'target')
+@click.option('--pr', '--pull-request', 'pull_request')
 @click.option('--force/--no-force', '-f/')
 @click.option('--rebase/--no-rebase', '-r/')
 @click.option('--check-flags/--no-check-flags', default=True)
@@ -916,7 +916,7 @@ def invert_opt(val):
 @click.option('-m', '--milestones', help="filter by milestone", multiple=True)
 @click.option('--stones/--no-stones', default=None,
               help="issues with no milestone")
-@click.option('--pr', '--with-pr', help="issues with prs", is_flag=True)
+@click.option('--pr', '--with-pr', 'with_pr', help="issues with prs", is_flag=True)
 def issuelist(project, order, fmt, with_pr, **opts):
     if project is None:
         project = get_project()

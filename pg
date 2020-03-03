@@ -485,7 +485,7 @@ def pr_merge(**opts):
 
 
 def issue_url(project, issue):
-    if isinstance(project, basestring):
+    if isinstance(project, six.string_types):
         ppath = project
     else:
         ppath = project_path(project)

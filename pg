@@ -74,6 +74,7 @@ def pg():
 
 @pg.group()
 def pr():
+    """Pull request operations """
     pass
 
 
@@ -143,6 +144,7 @@ def parse_pagure_url(url):
 @click.option('--json/--no-json')
 @click.option('--flags/--no-flags')
 def prinfo(prid, project, **opts):
+    """ Print a human-readable representation of a pull request. """
     if project is None:
         project = get_project()
         if project is None:
@@ -202,6 +204,7 @@ def prinfo(prid, project, **opts):
 
 @pr.command('fetchall')
 def pr_fetchall():
+    """Fetch all pull request branches locally """
     # fetch = +refs/pull/*/head:refs/remotes/origin/pull/*
     repo = get_repo()
     remote = pick_pagure_remote(repo)
@@ -211,7 +214,7 @@ def pr_fetchall():
 
 
 def do_fetch_pr(remote, prid):
-    """fetch the pr ref (not to a branch)"""
+    """Fetch an individual PR ref (not to a branch)"""
     src_ref = 'refs/pull/%s/head' % prid
     dst_ref = 'refs/pagure-pull/%s/%s' % (remote.name, prid)
     # note: dst_ref should match fetchall command
@@ -373,6 +376,7 @@ def peel_ref(ref):
 @click.argument('a')
 @click.argument('b')
 def test_contains(a, b):
+    """DEBUGGING: does commit A contain commit B? """
     repo = get_repo()
     A = peel_ref(repo.lookup_reference(a))
     B = peel_ref(repo.lookup_reference(b))
@@ -386,6 +390,7 @@ def test_contains(a, b):
 @click.option('--rebase/--no-rebase', '-r/')
 @click.option('--check-flags/--no-check-flags', default=True)
 def pr_merge(**opts):
+    """Merge a PR, with optional superpowers"""
     project = get_project()
     if project is None:
         raise Exception('Must be run from pagure checkout')
@@ -645,6 +650,7 @@ def get_pr_issues(project, prinfo):
 @click.argument('prid')
 @click.option('-p', '--project')
 def pr_issues(prid, project, **opts):
+    """Print all "Fixes" and "Relates" issues for a pull request"""
     if project is None:
         project = get_project()
         if project is None:
@@ -684,8 +690,9 @@ def pr_relnote(prid, project, **opts):
 
 @pr.command('list')
 @click.option('-p', '--project')
-@click.option('-o', '--order', default='utime')
+@click.option('-o', '--order', default='utime', show_default=True)
 def pr_list(project, order):
+    """List all PRs for this project"""
     if project is None:
         project = get_project()
         if project is None:
@@ -714,6 +721,7 @@ def pr_list(project, order):
 @click.option('-c', '--closer', metavar='USER',
                 help='ignore if final comment by user')
 def pr_recent(project, since, closer):
+    """Show all the PR updates since a certain time"""
     if project is None:
         project = get_project()
         if project is None:
@@ -807,6 +815,7 @@ def project_path(project):
 @click.argument('pattern')
 @click.option('--fork/--no-fork', default=False)
 def list_projects(pattern, **opts):
+    """List projects by name (optionally with forks) """
     if pattern:
         opts['pattern'] = pattern
     data = all_pages('projects', opts)
@@ -829,6 +838,7 @@ def list_projects(pattern, **opts):
 
 @pg.group()
 def project():
+    """Project operations """
     pass
 
 
@@ -894,6 +904,7 @@ def projectinfo(project):
 
 @pg.group()
 def issue():
+    """ Fetch or list Pagure issues """
     pass
 
 
@@ -918,6 +929,7 @@ def invert_opt(val):
               help="issues with no milestone")
 @click.option('--pr', '--with-pr', 'with_pr', help="issues with prs", is_flag=True)
 def issuelist(project, order, fmt, with_pr, **opts):
+    """List Pagure issue titles and IDs, with optional filtering """
     if project is None:
         project = get_project()
         if project is None:
@@ -971,8 +983,10 @@ def get_pr_map(project):
 
 @issue.command('recent')
 @click.option('-p', '--project')
-@click.option('-s', '--since', default="-7")
+@click.option('-s', '--since', default="-7", help='number of days',
+              show_default=True)
 def issue_recent(project, since):
+    """Show all the issue updates since a certain time"""
     if project is None:
         project = get_project()
         if project is None:
@@ -1023,6 +1037,7 @@ def issue_recent(project, since):
 @click.argument('issueid')
 @click.option('-p', '--project')
 def issueinfo(issueid, project):
+    """ Pretty-print the data for an issue. """
     if project is None:
         project = get_project()
         if project is None:

@@ -307,7 +307,7 @@ def pr_checkout(prid, **opts):
     obj = repo.get(pr['commit_stop'])
     ref = repo.head
     safe_reset = False
-    if ref.target == obj.oid:
+    if ref.target == obj.id:
         print("PR branch %s is up to date" % branch)
     elif contains(obj, peel_ref(ref)):
         # we're behind
@@ -317,11 +317,11 @@ def pr_checkout(prid, **opts):
         ref = repo.head
     elif contains(peel_ref(ref), obj):
         # we're ahead
-        print("Warning: local branch is ahead of PR: %s" % obj.oid)
+        print("Warning: local branch is ahead of PR: %s" % obj.id)
         cmd = ['git', '--no-pager', 'log', '--graph', '--oneline',
                '--first-parent', '%s..HEAD' % dst_ref]
         subprocess.call(cmd)
-    elif last_ref and peel_ref(ref).oid == last_ref:
+    elif last_ref and peel_ref(ref).id == last_ref:
         # We have a previous version of the PR, which has likely been rebased
         print("WARNING: the PR has been rebased. No local changes detected.")
         safe_reset = True
@@ -331,7 +331,7 @@ def pr_checkout(prid, **opts):
         cmd = ['git', '--no-pager', 'reflog', branch]
         subprocess.call(cmd)
 
-    if (opts['reset'] or safe_reset) and ref.target != obj.oid:
+    if (opts['reset'] or safe_reset) and ref.target != obj.id:
         print("RESETTING branch to match PR")
         print("Ref was: %s" % ref.target)
         cmd = ['git', 'reset', '--keep', dst_ref]
@@ -350,11 +350,11 @@ def contains(a, b):
     seen = set()
     while stack:
         obj = stack.pop(0)
-        if obj.oid in seen:
+        if obj.id in seen:
             # we may have gotten here via another path already
             continue
-        seen.add(obj.oid)
-        if obj.oid == b.oid:
+        seen.add(obj.id)
+        if obj.id == b.id:
             return True
         else:
             stack.extend(obj.parents)
@@ -426,7 +426,7 @@ def pr_merge(**opts):
         remote_ref = remote_ref.decode('ascii')
     remote_obj = repo.get(remote_ref)
 
-    if remote_obj.oid != repo.head.target:
+    if remote_obj.id != repo.head.target:
         print("Warning: current branch does match remote")
         # TODO: show differences
         if opts['rebase']:
@@ -508,9 +508,9 @@ def get_pr_from_branch(project, repo, branch):
             continue
         print("We have the ref")
         # XXX presuming repo.head matches branch
-        if obj.oid != repo.head.target:
+        if obj.id != repo.head.target:
             print("branch does not match PR")
-            print("pr: %s" % obj.oid)
+            print("pr: %s" % obj.id)
             print("us: %s" % repo.head.target)
             continue
         matches.append(pr)
